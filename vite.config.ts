@@ -18,7 +18,4 @@ export default defineConfig({
 			adapter: adapter()
 		})
 	],
-	optimizeDeps: {
-		include: ['@walletconnect/logger'],
-	},
 });
