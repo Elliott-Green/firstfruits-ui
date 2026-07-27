@@ -40,8 +40,8 @@
 		"vite": "^8.0.16"
 	},
 	"dependencies": {
-		"@reown/appkit": "^1.8.23",
-		"@reown/appkit-adapter-ethers": "1.8.23",
+		"@reown/appkit": "^1.7.19",
+		"@reown/appkit-adapter-ethers": "1.7.19",
 		"@splinetool/viewer": "^1.12.98",
 		"ethers": "6.17.0"
 	}
