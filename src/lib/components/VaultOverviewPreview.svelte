@@ -3,7 +3,8 @@
 	import { getActiveProvider } from '$lib/contracts/provider';
 	import { FIRSTFRUITS_ADDRESS, firstfruitsAbi } from '$lib/contracts/firstfruits';
 	import { fetchRethApyHistory } from '$lib/rocketpool';
-	import { fetchDailySnapshots, type DailySnapshot } from '$lib/subgraph';
+	import { fetchDailySnapshots, fetchProtocolStats, type DailySnapshot } from '$lib/subgraph';
+	import { fetchUsdPrices, formatUsd, type UsdPrices } from '$lib/prices';
 
 	const APY_DAYS = 30;
 	const TVL_DAYS = 30;
@@ -18,7 +19,21 @@
 	let totalValueLockedEther = $state<bigint | undefined>(undefined);
 	let causeCount = $state<number | undefined>(undefined);
 	let totalYieldDonatedReth = $state<bigint | undefined>(undefined);
+	let patronCount = $state<number | undefined>(undefined);
 	let loading = $state(true);
+
+	let usdPrices = $state<UsdPrices>({ ethUsd: undefined, rethUsd: undefined });
+
+	const totalValueLockedUsd = $derived(
+		totalValueLockedEther !== undefined && usdPrices.ethUsd !== undefined
+			? Number(formatEther(totalValueLockedEther)) * usdPrices.ethUsd
+			: undefined
+	);
+	const totalYieldDonatedUsd = $derived(
+		totalYieldDonatedReth !== undefined && usdPrices.rethUsd !== undefined
+			? Number(formatEther(totalYieldDonatedReth)) * usdPrices.rethUsd
+			: undefined
+	);
 
 	let apyHistory = $state<{ timestamp: string; apy: number }[]>([]);
 	const recentApy = $derived(apyHistory.slice(-APY_DAYS));
@@ -86,8 +101,9 @@
 			const ids = Array.from({ length: causeCount }, (_, i) => BigInt(i + 1));
 			const causes = await Promise.all(ids.map((id) => vault.causes(id)));
 			totalYieldDonatedReth = causes.reduce((sum: bigint, c: { totalHarvestedReth: bigint }) => sum + c.totalHarvestedReth, 0n);
-		} catch {
+		} catch (e) {
 			// Decorative on the homepage; fail quietly and show placeholders.
+			console.error(`loadVaultStats: `, e);
 		} finally {
 			loading = false;
 		}
@@ -100,15 +116,24 @@
 			.catch(() => {});
 		fetchDailySnapshots(TVL_DAYS)
 			.then((s) => (tvlSnapshots = s))
-			.catch(() => {
-				// Subgraph may not be configured/reachable yet — the chart and
-				// %change badge just don't render in that case.
+			.catch((e) => {
+				console.error(`vaultOverviewPreviewEffect: `, e);
+			});
+		fetchUsdPrices()
+			.then((p) => (usdPrices = p))
+			.catch(() => {});
+		fetchProtocolStats()
+			.then((p) => {
+				if (p) patronCount = Number(p.patronCount);
+			})
+			.catch((e) => {
+				console.error(`fetchProtocolStats: `, e);
 			});
 	});
 </script>
 
-<div class="card rounded-xl border border-gray-500 p-6 shadow-xl">
-	<div class="flex items-center justify-between border-b border-surface-200 pb-4 dark:border-surface-800">
+<div class="card rounded-xl border border-surface-200-800 bg-surface-50-950 p-6 shadow-sm">
+	<div class="flex items-center justify-between border-b border-surface-200-800 pb-4">
 		<h2 class="text-lg font-semibold">Vault Overview</h2>
 	</div>
 
@@ -118,6 +143,9 @@
 			<p class="text-3xl font-semibold">
 				{totalValueLockedEther !== undefined ? formatAmount(totalValueLockedEther) : loading ? '…' : '—'}
 				<span class="text-xl">Ξ</span>
+				{#if totalValueLockedUsd !== undefined}
+					<span class="text-sm opacity-50">({formatUsd(totalValueLockedUsd)})</span>
+				{/if}
 			</p>
 			{#if tvlChangePercent !== undefined}
 				<span class="text-xs font-medium" class:text-green-600={tvlChangePercent >= 0} class:text-red-500={tvlChangePercent < 0}>
@@ -142,29 +170,37 @@
 		</div>
 	{/if}
 
-	<div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-		<div class="rounded-lg bg-surface-100 p-3 dark:bg-surface-800">
-			<p class="text-xs opacity-60">Supported Causes</p>
-			<p class="text-lg font-semibold">{causeCount ?? (loading ? '…' : '—')}</p>
+	<div class="mt-6 grid grid-cols-2 gap-3">
+		<div class="rounded-lg bg-surface-100-900 p-4">
+			<p class="text-xs opacity-60">Total Causes</p>
+			<p class="mt-1 text-lg font-semibold">{causeCount ?? (loading ? '…' : '—')}</p>
 		</div>
-		<div class="rounded-lg bg-surface-100 p-3 dark:bg-surface-800">
+		<div class="rounded-lg bg-surface-100-900 p-4">
+			<p class="text-xs opacity-60">Total Patrons</p>
+			<p class="mt-1 text-lg font-semibold">{patronCount ?? (loading ? '…' : '—')}</p>
+		</div>
+		<div class="rounded-lg bg-surface-100-900 p-4">
 			<p class="text-xs opacity-60">Total Yield Donated</p>
-			<p class="text-lg font-semibold">
+			<p class="mt-1 text-lg font-semibold">
 				{totalYieldDonatedReth !== undefined ? formatAmount(totalYieldDonatedReth) : loading ? '…' : '—'} rETH
+				{#if totalYieldDonatedUsd !== undefined}
+					<span class="text-xs opacity-50">({formatUsd(totalYieldDonatedUsd)})</span>
+				{/if}
 			</p>
 		</div>
-		<div class="rounded-lg bg-surface-100 p-3 dark:bg-surface-800">
-			<p class="text-xs opacity-60">Rocket Pool APY</p>
-			<p class="text-lg font-semibold">
+		<div class="rounded-lg bg-surface-100-900 p-4">
+			<p class="text-xs opacity-60">Current rETH APY</p>
+			<p class="mt-1 text-lg font-semibold">
 				{currentApy !== undefined ? `${currentApy.toFixed(2)}%` : '…'}
 			</p>
-			{#if apyChart}
-				<svg viewBox="0 0 {CHART_WIDTH} {APY_CHART_HEIGHT}" preserveAspectRatio="none" class="mt-1 h-8 w-full text-primary-500">
+			<!-- TODO, can this nicely fit in the card without causing extra height, like absolute, but not? -->
+			<!-- {#if apyChart}
+				<svg viewBox="0 0 {CHART_WIDTH} {APY_CHART_HEIGHT}" preserveAspectRatio="none" class="mt-1 h-4  w-full text-primary-500">
 					<polyline points={apyChart.line} fill="none" stroke="currentColor" stroke-width="2" />
 				</svg>
-			{/if}
+			{/if} -->
 		</div>
 	</div>
 
-	<a href="/dashboard" class="mt-6 btn w-full justify-center preset-tonal">Manage Your Vault →</a>
+	<a href="/dashboard" class="mt-6 btn w-full justify-center preset-tonal btn-xl">Manage Vault</a>
 </div>

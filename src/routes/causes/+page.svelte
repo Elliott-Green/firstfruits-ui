@@ -45,7 +45,7 @@
 	});
 </script>
 
-<div class="mx-auto max-w-4xl px-4 py-8">
+<div class="px-4 py-8 lg:px-18">
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-3xl font-bold">Causes</h1>
 		<button type="button" class="btn preset-filled-primary-500" disabled>Create a cause</button>

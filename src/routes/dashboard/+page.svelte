@@ -118,7 +118,7 @@
 	});
 </script>
 
-<div class="mx-auto max-w-3xl px-4 py-8">
+<div class="px-4 py-8 lg:px-18">
 	<h1 class="mb-6 text-3xl font-bold">Your Vault</h1>
 
 	{#if !account.isConnected}

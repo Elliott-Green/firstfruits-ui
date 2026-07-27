@@ -34,7 +34,7 @@
 
 <button
 	type="button"
-	class="btn-icon preset-filled btn-icon-xl"
+	class="btn-icon btn-lg preset-filled"
 	title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
 	aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
 	onclick={toggleTheme}

@@ -35,7 +35,7 @@
 {#if account.address}
 	<button
 		type="button"
-		class="justify-text btn flex items-center gap-2 bg-black text-center text-white btn-xl dark:bg-white dark:text-black"
+		class="justify-text btn flex items-center gap-2 bg-black text-center text-sm text-white dark:bg-white dark:text-black"
 		onclick={openAccountView}
 	>
 		{#if balanceWei !== undefined}
