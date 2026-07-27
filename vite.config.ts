@@ -18,4 +18,11 @@ export default defineConfig({
 			adapter: adapter()
 		})
 	],
+	optimizeDeps: {
+		include: ['@reown/appkit', '@reown/appkit-adapter-ethers']
+	},
+
+	ssr: {
+		noExternal: [/@reown/, /@walletconnect/]
+	}
 });
