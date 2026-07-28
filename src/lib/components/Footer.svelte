@@ -11,18 +11,20 @@
 </script>
 
 <footer class="border-t border-surface-200-800 bg-surface-50-950">
-	<div class="px-4 py-12 lg:px-18">
-		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr]">
+	<div class="px-4 py-10 sm:py-12 lg:px-18 lg:py-16">
+		<div class="grid gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-[2fr_1fr_1fr]">
 			<div>
 				<a href="/" class="flex items-center gap-2">
 					<img src={logo} alt="Firstfruits" class="h-7 w-7 brightness-0 dark:invert" />
 					<span class="text-lg font-semibold">Firstfruits</span>
 				</a>
 				<p class="mt-3 text-sm opacity-60">
-					A charitable-giving vault built on Rocket Pool. Stake ETH, give the yield, keep your principal.
+					A charitable-giving vault built with rETH. Stake ETH, donate the yield, keep your principal.
 				</p>
 			</div>
-			<div></div>
+			<!-- Pure spacer column for the 3-col desktop layout — hidden below lg so
+			     it doesn't stack in as a dead empty block on mobile/tablet. -->
+			<div class="hidden lg:block"></div>
 			<div>
 				<h2 class="text-xs font-semibold tracking-wide uppercase opacity-60">Resources</h2>
 				<ul class="mt-4 space-y-3 text-sm">

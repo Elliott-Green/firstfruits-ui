@@ -5,7 +5,7 @@
 	import { fetchRecentActivity, fetchLatestCauses, type ActivityItem } from '$lib/subgraph';
 	import { FIRSTFRUITS_ADDRESS, RETH_ADDRESS } from '$lib/contracts/firstfruits';
 
-	const steps = [
+	const steps: { icon: string; title: string; body: string; iconScale?: string }[] = [
 		{
 			icon: `<path d="M6 3h12l4 6-10 12L2 9Z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M2 9h20"/>`,
 			title: 'Deposit',
@@ -14,12 +14,14 @@
 		{
 			icon: `<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.5-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7Z"/>`,
 			title: 'Earn',
-			body: 'ETH is staked which returns rETH to the vault.'
+			body: 'ETH is staked which returns rETH to the vault.',
+
 		},
 		{
 			icon: `<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>`,
 			title: 'Yield',
-			body: 'rETH appreciates over time, generating staking yield.'
+			body: 'rETH appreciates over time, generating staking yield.',
+
 		},
 		{
 			icon: `<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>`,
@@ -90,7 +92,7 @@
 		if (item.kind === 'causeCreated') {
 			return { icon: '🌱', label: 'Cause Created', subLabel: item.name ?? `Cause #${item.causeId}` };
 		}
-		return { icon: '📈', label: 'Yield Earned' };
+		return { icon: '📈', label: 'Yield Earned', subLabel: '' };
 	}
 
 	function activityAmount(item: ActivityItem): string {
@@ -127,15 +129,44 @@
 <HomeHero />
 
 <!-- How it works + Recent activity -->
-<section class="px-4 py-16 lg:px-18">
+<section class="px-4 py-10 sm:py-12 lg:px-18 lg:py-16">
 	<div class="grid gap-6 lg:grid-cols-3">
 		<!-- How it works -->
 		<div class="flex flex-col card border border-surface-200-800 bg-surface-50-950 p-6 lg:col-span-2">
 			<h2 class="text-2xl font-semibold">How Firstfruits Works</h2>
-			<div class="mt-8 flex flex-1 items-center">
-				<div
-					class="grid w-full grid-cols-2 items-start gap-x-4 gap-y-10 overflow-x-auto sm:grid-cols-3 lg:flex lg:gap-2 lg:gap-y-0 lg:pb-1"
-				>
+
+			<!-- Mobile: a plain stacked list, same pattern as Recent Activity — avoids
+			     an odd 2-2-1 grid wrap with 5 items leaving the last one orphaned. -->
+			<div class="mt-4 flex flex-col divide-y divide-surface-200-800 sm:hidden">
+				{#each steps as step, i (step.title)}
+					<div class="flex items-center gap-4 py-3">
+						<span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary-500/10 text-primary-600-400">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="26"
+								height="26"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								style={step.iconScale ? `transform: ${step.iconScale}` : undefined}
+							>
+								{@html step.icon}
+							</svg>
+						</span>
+						<div>
+							<p class="text-sm font-semibold">{i + 1}. {step.title}</p>
+							<p class="mt-0.5 text-xs opacity-60">{step.body}</p>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<!-- Tablet/desktop: centered icon-over-text columns, full row with arrows at lg. -->
+			<div class="mt-8 hidden flex-1 items-center sm:flex">
+				<div class="grid w-full grid-cols-3 items-start gap-x-4 gap-y-10 overflow-x-auto lg:flex lg:gap-2 lg:gap-y-0 lg:pb-1">
 					{#each steps as step, i (step.title)}
 						<div class="flex min-w-0 flex-col items-center gap-4 text-center lg:flex-1">
 							<span class="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-primary-500/10 text-primary-600-400">
@@ -246,7 +277,7 @@
 </section>
 
 <!-- Protocol transparency -->
-<section class="px-4 pb-16 lg:px-18">
+<section class="px-4 pb-10 sm:pb-12 lg:px-18 lg:pb-16">
 	<div class="card border border-surface-200-800 bg-surface-50-950 p-6 sm:p-8">
 		<h2 class="text-lg font-semibold">Protocol Transparency</h2>
 		<p class="mt-1 text-sm opacity-60">Firstfruits is non-custodial and open source.</p>
@@ -278,7 +309,7 @@
 </section>
 
 <!-- CTA banner -->
-<section class="bg-primary-500/10 px-4 py-12 lg:px-18">
+<section class="bg-primary-500/10 px-4 py-10 sm:py-12 lg:px-18 lg:py-16">
 	<div class="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
 		<div>
 			<p class="text-xl font-bold">Start giving what grows.</p>

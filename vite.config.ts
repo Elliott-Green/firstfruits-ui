@@ -23,6 +23,11 @@ export default defineConfig({
 	},
 
 	ssr: {
-		noExternal: [/@reown/, /@walletconnect/]
+		// Narrowly targeted: only the one package whose ESM/CJS interop actually
+		// breaks under Node's module resolution. A broader match (the whole
+		// @reown/@walletconnect families) drags in unrelated transitive deps
+		// (@walletconnect/time's raw CJS build, optional Coinbase/x402
+		// integrations) that break both `vite build` and `vite dev` SSR.
+		noExternal: ['@walletconnect/logger']
 	}
 });

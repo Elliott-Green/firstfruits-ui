@@ -4,7 +4,8 @@
 	import { FIRSTFRUITS_ADDRESS, firstfruitsAbi } from '$lib/contracts/firstfruits';
 	import { fetchRethApyHistory } from '$lib/rocketpool';
 	import { fetchDailySnapshots, fetchProtocolStats, type DailySnapshot } from '$lib/subgraph';
-	import { fetchUsdPrices, formatUsd, type UsdPrices } from '$lib/prices';
+	import { fetchUsdPrices, convertRethToUsd, formatUsd, type UsdPrices } from '$lib/prices';
+	import { fetchRethExchangeRate } from '$lib/contracts/reth';
 
 	const APY_DAYS = 30;
 	const TVL_DAYS = 30;
@@ -22,7 +23,10 @@
 	let patronCount = $state<number | undefined>(undefined);
 	let loading = $state(true);
 
-	let usdPrices = $state<UsdPrices>({ ethUsd: undefined, rethUsd: undefined });
+	let usdPrices = $state<UsdPrices>({ ethUsd: undefined });
+	// rETH → ETH redemption rate, for pricing rETH amounts in USD (see
+	// convertRethToUsd's doc comment for why this isn't just a quoted rETH price).
+	let exchangeRate = $state<bigint | undefined>(undefined);
 
 	const totalValueLockedUsd = $derived(
 		totalValueLockedEther !== undefined && usdPrices.ethUsd !== undefined
@@ -30,8 +34,8 @@
 			: undefined
 	);
 	const totalYieldDonatedUsd = $derived(
-		totalYieldDonatedReth !== undefined && usdPrices.rethUsd !== undefined
-			? Number(formatEther(totalYieldDonatedReth)) * usdPrices.rethUsd
+		totalYieldDonatedReth !== undefined && usdPrices.ethUsd !== undefined && exchangeRate !== undefined
+			? convertRethToUsd(totalYieldDonatedReth, exchangeRate, usdPrices.ethUsd)
 			: undefined
 	);
 
@@ -121,6 +125,9 @@
 			});
 		fetchUsdPrices()
 			.then((p) => (usdPrices = p))
+			.catch(() => {});
+		fetchRethExchangeRate()
+			.then((r) => (exchangeRate = r))
 			.catch(() => {});
 		fetchProtocolStats()
 			.then((p) => {

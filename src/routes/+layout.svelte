@@ -15,9 +15,9 @@
 	let { children } = $props();
 
 	const navLinks = [
-		{ href: '/', label: 'Home' },
 		{ href: '/dashboard', label: 'Dashboard' },
 		{ href: '/causes', label: 'Causes' },
+		{ href: '/patrons', label: 'Patrons' },
 	];
 
 	let mobileMenuOpen = $state(false);
@@ -40,7 +40,10 @@
 				{#each navLinks as link (link.href)}
 					<a
 						href={link.href}
-						class="text-sm"
+						class="-mb-4 border-b-2 pb-5 text-sm transition-colors"
+						class:border-primary-500={page.url.pathname === link.href}
+						class:border-transparent={page.url.pathname !== link.href}
+						class:text-primary-500={page.url.pathname === link.href}
 						class:font-semibold={page.url.pathname === link.href}
 						aria-current={page.url.pathname === link.href ? 'page' : undefined}
 					>
@@ -100,6 +103,7 @@
 				href={link.href}
 				class="rounded-lg px-2 py-3 text-sm"
 				class:font-semibold={page.url.pathname === link.href}
+				class:text-primary-500={page.url.pathname === link.href}
 				aria-current={page.url.pathname === link.href ? 'page' : undefined}
 				onclick={() => (mobileMenuOpen = false)}
 			>

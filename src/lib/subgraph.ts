@@ -117,6 +117,148 @@ export async function fetchProtocolStats(): Promise<ProtocolStats | undefined> {
 	return json.data.protocol as ProtocolStats | undefined;
 }
 
+/**
+ * Distinct patron count per cause, keyed by causeId. There's no direct
+ * "supporter count" on-chain or in the subgraph schema — this derives it from
+ * YieldAllocated events (every patron who's ever had yield routed to a cause
+ * shows up there at least once), which is the closest honest signal we have
+ * to "how many people are supporting this cause" without a dedicated
+ * per-cause-per-patron entity. It's a lifetime count (anyone who's ever sent
+ * yield here), not "currently allocating" — a patron who later changed their
+ * split away from this cause still counts.
+ */
+export async function fetchCauseSupporterCounts(): Promise<Map<string, number>> {
+	if (!SUBGRAPH_URL) throw new Error('VITE_SUBGRAPH_URL is not set');
+
+	const query = `{
+		yieldAllocateds(first: 1000) {
+			patron
+			causeId
+		}
+	}`;
+
+	const res = await fetch(SUBGRAPH_URL, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ query })
+	});
+	if (!res.ok) throw new Error(`Subgraph request failed: ${res.status}`);
+
+	const json = await res.json();
+	if (json.errors) throw new Error(json.errors[0]?.message ?? 'Subgraph query error');
+
+	const patronsByCause = new Map<string, Set<string>>();
+	for (const row of json.data.yieldAllocateds as { patron: string; causeId: string }[]) {
+		const set = patronsByCause.get(row.causeId) ?? new Set<string>();
+		set.add(row.patron.toLowerCase());
+		patronsByCause.set(row.causeId, set);
+	}
+
+	return new Map([...patronsByCause].map(([causeId, patrons]) => [causeId, patrons.size]));
+}
+
+/**
+ * Lifetime total yield a single patron has routed to causes, in rETH — summed
+ * client-side from their YieldAllocated events since there's no per-patron
+ * running total in the schema (Patron only tracks firstDepositTimestamp/
+ * active). Bounded to the first 1000 events, which is generous for a single
+ * address given MAX_ALLOCATIONS caps how often this can fire per harvest.
+ */
+export async function fetchPatronTotalDonatedReth(patron: string): Promise<bigint> {
+	if (!SUBGRAPH_URL) throw new Error('VITE_SUBGRAPH_URL is not set');
+
+	const query = `{
+		yieldAllocateds(first: 1000, where: { patron: "${patron.toLowerCase()}" }) {
+			rethAmount
+		}
+	}`;
+
+	const res = await fetch(SUBGRAPH_URL, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ query })
+	});
+	if (!res.ok) throw new Error(`Subgraph request failed: ${res.status}`);
+
+	const json = await res.json();
+	if (json.errors) throw new Error(json.errors[0]?.message ?? 'Subgraph query error');
+
+	return (json.data.yieldAllocateds as { rethAmount: string }[]).reduce((sum, row) => sum + BigInt(row.rethAmount), 0n);
+}
+
+export type PatronLeaderboardRow = {
+	address: string;
+	firstDepositTimestamp: number;
+	active: boolean;
+	// Lifetime totals — a patron who has since withdrawn keeps their history.
+	totalDepositedEther: bigint;
+	totalDonatedReth: bigint;
+};
+
+/**
+ * Every patron who's ever deposited, with lifetime deposited/donated totals —
+ * the data behind a leaderboard. This is the expensive query in this file:
+ * there's no per-patron running total in the schema (Patron only tracks
+ * firstDepositTimestamp/active), so it pulls the full Deposited and
+ * YieldAllocated event lists and reduces them client-side. Bounded to the
+ * first 1000 of each, same as the other list queries here — fine for now,
+ * but the first thing to revisit (cursor-paginate) once the protocol has
+ * more history than that. Callers should cache this aggressively (e.g. in
+ * localStorage) rather than re-running it on every page visit.
+ */
+export async function fetchPatronLeaderboard(): Promise<PatronLeaderboardRow[]> {
+	if (!SUBGRAPH_URL) throw new Error('VITE_SUBGRAPH_URL is not set');
+
+	const query = `{
+		patrons(first: 1000) {
+			id
+			firstDepositTimestamp
+			active
+		}
+		depositeds(first: 1000) {
+			patron
+			principalAdded
+		}
+		yieldAllocateds(first: 1000) {
+			patron
+			rethAmount
+		}
+	}`;
+
+	const res = await fetch(SUBGRAPH_URL, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ query })
+	});
+	if (!res.ok) throw new Error(`Subgraph request failed: ${res.status}`);
+
+	const json = await res.json();
+	if (json.errors) throw new Error(json.errors[0]?.message ?? 'Subgraph query error');
+
+	const depositedByPatron = new Map<string, bigint>();
+	for (const row of json.data.depositeds as { patron: string; principalAdded: string }[]) {
+		const key = row.patron.toLowerCase();
+		depositedByPatron.set(key, (depositedByPatron.get(key) ?? 0n) + BigInt(row.principalAdded));
+	}
+
+	const donatedByPatron = new Map<string, bigint>();
+	for (const row of json.data.yieldAllocateds as { patron: string; rethAmount: string }[]) {
+		const key = row.patron.toLowerCase();
+		donatedByPatron.set(key, (donatedByPatron.get(key) ?? 0n) + BigInt(row.rethAmount));
+	}
+
+	return (json.data.patrons as { id: string; firstDepositTimestamp: string; active: boolean }[]).map((p) => {
+		const key = p.id.toLowerCase();
+		return {
+			address: p.id,
+			firstDepositTimestamp: Number(p.firstDepositTimestamp),
+			active: p.active,
+			totalDepositedEther: depositedByPatron.get(key) ?? 0n,
+			totalDonatedReth: donatedByPatron.get(key) ?? 0n
+		};
+	});
+}
+
 export type ActivityItem = {
 	kind: 'deposit' | 'yieldAllocated' | 'harvested' | 'withdrawal' | 'causeCreated';
 	patron?: string;

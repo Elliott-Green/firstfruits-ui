@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Contract, formatEther, parseEther } from 'ethers';
+	import { Contract, formatEther } from 'ethers';
 	import VaultOverviewPreview from '$lib/components/VaultOverviewPreview.svelte';
 	import AddressAvatarLink from '$lib/components/AddressAvatarLink.svelte';
 	import RocketPoolLogo from '$lib/assets/rp_logo.svg';
@@ -7,14 +7,8 @@
 	import { Marquee } from '@skeletonlabs/skeleton-svelte';
 	import { fetchLatestCauses } from '$lib/subgraph';
 	import { isCauseCurated } from '$lib/curatedCauses';
-	import { MOCK_CAUSES } from '$lib/mockCauses';
 	import { getActiveProvider } from '$lib/contracts/provider';
 	import { FIRSTFRUITS_ADDRESS, firstfruitsAbi } from '$lib/contracts/firstfruits';
-
-	// Flip this in .env to preview the marquee with mock causes instead of
-	// whatever's actually live in the subgraph (useful while the real cause
-	// list is still too short to cycle nicely). Never set in production.
-	const USE_MOCK_CAUSES = import.meta.env.VITE_USE_MOCK_CAUSES === 'true';
 
 	function formatAmount(wei: bigint): string {
 		return Number(formatEther(wei)).toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -49,18 +43,6 @@
 	}
 
 	async function loadItems() {
-		if (USE_MOCK_CAUSES) {
-			items = MOCK_CAUSES.map((c) => ({
-				causeId: c.causeId,
-				name: c.name,
-				curated: c.curated,
-				active: c.active,
-				owner: c.owner,
-				recipient: c.recipient,
-				totalHarvestedReth: parseEther(c.totalHarvestedEther)
-			}));
-			return;
-		}
 		try {
 			const causes = await fetchLatestCauses(25);
 			const base = causes.map((c) => ({
@@ -81,8 +63,8 @@
 	});
 </script>
 
-<section class="border-surface-200-800 bg-surface-50-950 px-4 py-16 lg:px-18 lg:py-28">
-	<div class="grid items-center gap-12 pb-16 lg:grid-cols-2 lg:gap-10 lg:pb-32">
+<section class="border-surface-200-800 bg-surface-50-950 px-4 py-10 sm:py-12 lg:px-18 lg:py-28">
+	<div class="grid items-center gap-12 pb-10 sm:pb-12 lg:grid-cols-2 lg:gap-10 lg:pb-32">
 		<div>
 			<span class="mb-6 badge inline-flex items-center gap-3 preset-tonal px-4">
 				<img src={RocketPoolLogo} alt="rocketpool logo" class="w-8" />
