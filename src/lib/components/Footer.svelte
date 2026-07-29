@@ -22,7 +22,7 @@
 					A charitable-giving vault built with rETH. Stake ETH, donate the yield, keep your principal.
 				</p>
 			</div>
-			<!-- Pure spacer column for the 3-col desktop layout — hidden below lg so
+			<!-- Pure spacer column for the 3-col desktop layout - hidden below lg so
 			     it doesn't stack in as a dead empty block on mobile/tablet. -->
 			<div class="hidden lg:block"></div>
 			<div>

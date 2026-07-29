@@ -7,7 +7,7 @@
 	import { FIRSTFRUITS_ADDRESS, RETH_ADDRESS } from '$lib/contracts/firstfruits';
 
 	let { data } = $props();
-	// No titleTemplate suffix here — the base title is already the full
+	// No titleTemplate suffix here - the base title is already the full
 	// site tagline, so appending "· Firstfruits" would double up.
 	const metaTags = $derived(deepMerge(data.baseMetaTags, { titleTemplate: '' }));
 
@@ -141,7 +141,7 @@
 		<div class="flex flex-col card border border-surface-200-800 bg-surface-50-950 p-6 lg:col-span-2">
 			<h2 class="text-2xl font-semibold">How Firstfruits Works</h2>
 
-			<!-- Mobile: a plain stacked list, same pattern as Recent Activity — avoids
+			<!-- Mobile: a plain stacked list, same pattern as Recent Activity - avoids
 			     an odd 2-2-1 grid wrap with 5 items leaving the last one orphaned. -->
 			<div class="mt-4 flex flex-col divide-y divide-surface-200-800 sm:hidden">
 				{#each steps as step, i (step.title)}
@@ -235,7 +235,7 @@
 				{:else if activity.length === 0}
 					<p class="py-6 text-center text-sm opacity-50">No activity yet.</p>
 				{:else}
-					{#each activity as item (item.transactionHash + item.kind)}
+					{#each activity as item (item.id)}
 						{@const info = activityLabel(item)}
 						<div class="flex items-center justify-between gap-3 py-3">
 							<div class="flex items-center gap-1">

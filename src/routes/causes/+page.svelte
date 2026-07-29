@@ -49,7 +49,7 @@
 	type SortKey = 'id' | 'name' | 'status' | 'supporters' | 'raised' | 'claimable' | 'created';
 
 	const CACHE_KEY = 'firstfruits:causes-list:v1';
-	// One on-chain call per cause (plus two subgraph queries) — fine at a
+	// One on-chain call per cause (plus two subgraph queries) - fine at a
 	// handful of causes, but the whole point of the search-to-add pattern
 	// elsewhere in this app is that the catalog won't stay small forever, so
 	// this gets the same localStorage cache the patron leaderboard has.
@@ -64,12 +64,12 @@
 	let exchangeRate = $state<bigint | undefined>(undefined);
 	let cachedAt = $state<number | undefined>(undefined);
 	// Keyed by lowercased address. `undefined` = not looked up yet, `null` = looked
-	// up but no ENS name registered — the two are distinguished so the table can
+	// up but no ENS name registered - the two are distinguished so the table can
 	// keep showing the truncated address instead of flashing a "loading" state.
 	let ensNames = $state<Map<string, string | null>>(new Map());
 
 	// Owner-only actions: setCauseActive/setCauseRecipient. Only meaningful for
-	// causes the connected wallet actually owns — checked per-row below.
+	// causes the connected wallet actually owns - checked per-row below.
 	let togglingCauseId = $state<string | undefined>(undefined);
 	let editingCauseId = $state<string | undefined>(undefined);
 	let editRecipientValue = $state('');
@@ -196,7 +196,7 @@
 	}
 
 	function relativeTime(timestamp: number | undefined): string {
-		if (timestamp === undefined) return '—';
+		if (timestamp === undefined) return '-';
 		const seconds = Date.now() / 1000 - timestamp;
 		if (seconds < 3600) return `${Math.max(1, Math.floor(seconds / 60))}m ago`;
 		if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -243,7 +243,7 @@
 					})
 				),
 				// Best-effort: these come from the subgraph, not the contract. If it's
-				// not configured (or the request fails), just show "—" for these
+				// not configured (or the request fails), just show "-" for these
 				// columns rather than breaking the whole page over decorative stats.
 				fetchLatestCauses(200)
 					.then((list) => new Map(list.map((c) => [c.causeId, Number(c.blockTimestamp)])))
@@ -276,7 +276,7 @@
 
 	// Separate effect (rather than calling this from inside loadCauses) so it
 	// has its own explicit reactive dependency on `causes` and `ensNames`, with
-	// a convergence guard — only resolves addresses not already in the map, so
+	// a convergence guard - only resolves addresses not already in the map, so
 	// the re-run triggered by its own `ensNames` write finds nothing left to do
 	// and stops, instead of looping.
 	$effect(() => {
@@ -291,7 +291,7 @@
 <MetaTags {...metaTags} />
 
 <div class="px-4 py-8 lg:px-18">
-	<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+	<div class="mb-1 flex flex-wrap items-end justify-between gap-3">
 		<div>
 			<h1 class="text-3xl font-bold">Causes</h1>
 			<p class="mt-1 text-sm opacity-60">Browse every cause and see how much yield each has received.</p>
@@ -306,35 +306,43 @@
 			<a href="/causes/create" class="btn preset-tonal">Create a cause</a>
 		</div>
 	</div>
+	<p class="mb-6 text-xs opacity-50">
+		Cause creation is permissionless - anyone can create one. This list is cached locally for
+		{CACHE_TTL_MS / 60000} minutes - use Refresh for the latest.
+	</p>
 
 	{#if ownedCauses.length > 0}
 		<div class="mb-6">
 			<h2 class="text-lg font-semibold">Manage Your Causes</h2>
 			<p class="mt-0.5 text-sm opacity-60">
-				You own {ownedCauses.length} cause{ownedCauses.length === 1 ? '' : 's'} — update its status or recipient below.
+				You own {ownedCauses.length} cause{ownedCauses.length === 1 ? '' : 's'} - update its status or recipient below.
 			</p>
 			<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each ownedCauses as cause (cause.id)}
 					<div class="card border border-surface-200-800 bg-surface-50-950 p-5">
-						<div class="flex items-center justify-between gap-2">
-							<div class="flex min-w-0 items-center gap-1.5 font-medium">
-								{#if cause.curated}
-									<span class="shrink-0 text-amber-500" title="Curated cause">⭐</span>
-								{/if}
-								<span class="truncate">{cause.name}</span>
-							</div>
-							<button
-								type="button"
-								class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium hover:opacity-80 disabled:opacity-50 {cause.active
+						<div class="flex min-w-0 items-center gap-1.5 font-medium">
+							{#if cause.curated}
+								<span class="shrink-0 text-amber-500" title="Curated cause">⭐</span>
+							{/if}
+							<span class="truncate">{cause.name}</span>
+						</div>
+
+						<p class="mt-3 text-xs opacity-60">Status</p>
+						<button
+							type="button"
+							class="mt-1.5 flex w-full items-center justify-between gap-2 rounded-lg border border-surface-200-800 px-3 py-2 hover:bg-surface-100-900 disabled:opacity-50"
+							disabled={togglingCauseId === cause.id}
+							onclick={() => toggleActive(cause)}
+						>
+							<span
+								class="rounded-full px-2 py-0.5 text-xs font-medium {cause.active
 									? 'bg-green-500/10 text-green-600 dark:text-green-400'
 									: 'bg-surface-200-800 opacity-60'}"
-								disabled={togglingCauseId === cause.id}
-								onclick={() => toggleActive(cause)}
-								title="Click to {cause.active ? 'deactivate' : 'activate'} this cause"
 							>
-								{togglingCauseId === cause.id ? '…' : cause.active ? 'Active' : 'Inactive'}
-							</button>
-						</div>
+								{togglingCauseId === cause.id ? 'Updating…' : cause.active ? 'Active' : 'Inactive'}
+							</span>
+							<span class="text-xs opacity-60">Tap to {cause.active ? 'deactivate' : 'activate'}</span>
+						</button>
 
 						<p class="mt-3 text-xs opacity-60">Recipient</p>
 						{#if editingCauseId === cause.id}
@@ -368,7 +376,7 @@
 						{:else}
 							<div class="mt-1.5 flex items-center justify-between gap-2">
 								<AddressLink address={cause.recipient} ensName={ensNames.get(cause.recipient.toLowerCase())} />
-								<button type="button" class="btn preset-tonal btn-sm" onclick={() => startEditRecipient(cause)}>Edit</button>
+								<button type="button" class="btn preset-tonal btn-sm" onclick={() => startEditRecipient(cause)}> Change Address </button>
 							</div>
 						{/if}
 					</div>
@@ -379,7 +387,7 @@
 
 	{#if !FIRSTFRUITS_ADDRESS}
 		<div class="card p-10 text-center opacity-75">
-			The vault hasn't been deployed yet — set <code>VITE_FIRSTFRUITS_ADDRESS</code> once it is.
+			The vault hasn't been deployed yet - set <code>VITE_FIRSTFRUITS_ADDRESS</code> once it is.
 		</div>
 	{:else if loading && causes.length === 0}
 		<p class="opacity-60">Loading causes…</p>
@@ -459,7 +467,7 @@
 									<span class="rounded-full bg-surface-200-800 px-2 py-0.5 text-xs font-medium opacity-60">Inactive</span>
 								{/if}
 							</td>
-							<td class="px-4 py-3">{cause.supporterCount ?? '—'}</td>
+							<td class="px-4 py-3">{cause.supporterCount ?? '-'}</td>
 							<td class="px-4 py-3">
 								<span class="font-medium">{formatReth(cause.totalHarvestedReth)} rETH</span>
 								{#if usdRaised}
@@ -486,11 +494,6 @@
 		</div>
 		<TablePagination pagination={causesPagination} />
 	{/if}
-
-	<p class="mt-4 text-xs opacity-50">
-		Cause creation is permissionless — anyone can create one. This list is cached locally for
-		{CACHE_TTL_MS / 60000} minutes — use Refresh for the latest.
-	</p>
 </div>
 
 <Dialog

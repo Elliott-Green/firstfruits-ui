@@ -43,7 +43,7 @@
 	const recentApy = $derived(apyHistory.slice(-APY_DAYS));
 	const currentApy = $derived(recentApy.at(-1)?.apy);
 
-	// A hand-rolled sparkline (no charting library) — same approach as the TVL
+	// A hand-rolled sparkline (no charting library) - same approach as the TVL
 	// chart above, just without the area fill.
 	const apyChart = $derived.by(() => {
 		if (recentApy.length < 2) return undefined;
@@ -148,7 +148,7 @@
 		<p class="text-sm opacity-60">Total Value Locked</p>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<p class="text-3xl font-semibold">
-				{totalValueLockedEther !== undefined ? formatAmount(totalValueLockedEther) : loading ? '…' : '—'}
+				{totalValueLockedEther !== undefined ? formatAmount(totalValueLockedEther) : loading ? '…' : '-'}
 				<span class="text-xl">Ξ</span>
 				{#if totalValueLockedUsd !== undefined}
 					<span class="text-sm opacity-50">({formatUsd(totalValueLockedUsd)})</span>
@@ -177,7 +177,15 @@
 					</linearGradient>
 				</defs>
 				<path d={tvlChart.area} fill="url(#vault-tvl-gradient)" />
-				<polyline points={tvlChart.line} fill="none" stroke="currentColor" stroke-width="2" />
+				<polyline
+					points={tvlChart.line}
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linejoin="round"
+					stroke-linecap="round"
+					vector-effect="non-scaling-stroke"
+				/>
 			</svg>
 		</div>
 	{/if}
@@ -185,16 +193,16 @@
 	<div class="mt-6 grid grid-cols-2 gap-3">
 		<div class="rounded-lg bg-surface-100-900 p-4">
 			<p class="text-xs opacity-60">Total Causes</p>
-			<p class="mt-1 text-lg font-semibold">{causeCount ?? (loading ? '…' : '—')}</p>
+			<p class="mt-1 text-lg font-semibold">{causeCount ?? (loading ? '…' : '-')}</p>
 		</div>
 		<div class="rounded-lg bg-surface-100-900 p-4">
 			<p class="text-xs opacity-60">Total Patrons</p>
-			<p class="mt-1 text-lg font-semibold">{patronCount ?? (loading ? '…' : '—')}</p>
+			<p class="mt-1 text-lg font-semibold">{patronCount ?? (loading ? '…' : '-')}</p>
 		</div>
 		<div class="rounded-lg bg-surface-100-900 p-4">
 			<p class="text-xs opacity-60">Total Yield Donated</p>
 			<p class="mt-1 text-lg font-semibold">
-				{totalYieldDonatedReth !== undefined ? formatAmount(totalYieldDonatedReth) : loading ? '…' : '—'} rETH
+				{totalYieldDonatedReth !== undefined ? formatAmount(totalYieldDonatedReth) : loading ? '…' : '-'} rETH
 				{#if totalYieldDonatedUsd !== undefined}
 					<span class="text-xs opacity-50">({formatUsd(totalYieldDonatedUsd)})</span>
 				{/if}

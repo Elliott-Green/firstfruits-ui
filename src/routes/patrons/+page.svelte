@@ -35,7 +35,7 @@
 
 	const CACHE_KEY = 'firstfruits:patron-leaderboard:v1';
 	// The underlying query pulls full Deposited/YieldAllocated event lists and
-	// aggregates client-side — expensive enough that we don't want to re-run it
+	// aggregates client-side - expensive enough that we don't want to re-run it
 	// on every page visit, hence the localStorage cache.
 	const CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -50,13 +50,13 @@
 	let exchangeRate = $state<bigint | undefined>(undefined);
 	let cachedAt = $state<number | undefined>(undefined);
 	// Keyed by lowercased address. `undefined` = not looked up yet, `null` = looked
-	// up but no ENS name registered — distinguished so the table keeps showing
+	// up but no ENS name registered - distinguished so the table keeps showing
 	// the truncated address instead of flashing a "loading" state.
 	let ensNames = $state<Map<string, string | null>>(new Map());
 
 	// Live on-chain claimable yield per patron (lowercased address -> rETH
 	// wei). Unlike the totals above, this can't come from the subgraph and
-	// isn't cached — it changes continuously as rETH's exchange rate moves,
+	// isn't cached - it changes continuously as rETH's exchange rate moves,
 	// and a stale number here would be actively misleading right where people
 	// click "Harvest".
 	let pendingYields = $state<Map<string, bigint>>(new Map());
@@ -64,14 +64,14 @@
 	// wei), same definition as the dashboard's "Withdrawable principal". Not
 	// the same thing as lifetime deposits: a patron who has withdrawn keeps
 	// their lifetime-donated history, but their current stake can be far
-	// smaller (or zero) — this is what "how much do they currently have
+	// smaller (or zero) - this is what "how much do they currently have
 	// deposited" actually means, so like pendingYields it's read live and
 	// never cached.
 	let currentPrincipal = $state<Map<string, bigint>>(new Map());
 	let selected = $state<Set<string>>(new Set());
 	let harvestingAddresses = $state<Set<string>>(new Set());
 	let harvestingBulk = $state(false);
-	// Shared modal for harvest errors, matching the dashboard's pattern — not
+	// Shared modal for harvest errors, matching the dashboard's pattern - not
 	// inline text, since these are transient action failures (retry in place),
 	// not "the page has no data" states.
 	let errorModalMessage = $state<string | undefined>(undefined);
@@ -120,7 +120,7 @@
 	const totalDeposited = $derived([...currentPrincipal.values()].reduce((sum, wei) => sum + wei, 0n));
 	const totalDonated = $derived(patrons.reduce((sum, p) => sum + p.totalDonatedReth, 0n));
 
-	// Only patrons with actually-claimable yield are selectable — no point
+	// Only patrons with actually-claimable yield are selectable - no point
 	// selecting (or paying gas to harvest) a zero balance.
 	const selectableAddresses = $derived(patrons.map((p) => p.address.toLowerCase()).filter((a) => (pendingYields.get(a) ?? 0n) > 0n));
 	const allSelected = $derived(selectableAddresses.length > 0 && selectableAddresses.every((a) => selected.has(a)));
@@ -169,7 +169,7 @@
 		pendingYields = next;
 	}
 
-	// Same shape as loadPendingYields — withdrawableEther() is the live,
+	// Same shape as loadPendingYields - withdrawableEther() is the live,
 	// currently-staked principal (capped at rETH's current redemption value),
 	// not a historical sum.
 	async function loadCurrentPrincipal(addresses: string[]) {
@@ -193,7 +193,7 @@
 	}
 
 	function formatAmount(wei: bigint): string {
-		// 6dp, not 4 — at 4dp small-but-distinct rETH amounts (e.g. lifetime
+		// 6dp, not 4 - at 4dp small-but-distinct rETH amounts (e.g. lifetime
 		// donated vs. currently-pending yield for a patron who's barely
 		// harvested) round to the same displayed string and look like a bug.
 		return Number(formatEther(wei)).toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -347,7 +347,7 @@
 
 	{#if !SUBGRAPH_CONFIGURED}
 		<div class="card p-10 text-center opacity-75">
-			The patron leaderboard is powered by the subgraph — set <code>VITE_SUBGRAPH_URL</code> to enable it.
+			The patron leaderboard is powered by the subgraph - set <code>VITE_SUBGRAPH_URL</code> to enable it.
 		</div>
 	{:else if loading && patrons.length === 0}
 		<p class="opacity-60">Loading patrons…</p>
@@ -391,7 +391,7 @@
 								type="button"
 								class="flex items-center gap-1 hover:text-primary-500"
 								onclick={() => toggleSort('deposited')}
-								title="Ether currently staked in the vault right now (withdrawable principal) — not a lifetime total"
+								title="Ether currently staked in the vault right now (withdrawable principal) - not a lifetime total"
 							>
 								Currently Deposited {sortKey === 'deposited' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
 							</button>
@@ -473,7 +473,7 @@
 								{#if claimable === undefined}
 									<span class="opacity-40">…</span>
 								{:else if claimable === 0n}
-									<span class="opacity-40">—</span>
+									<span class="opacity-40">-</span>
 								{:else}
 									<span class="font-medium">{formatAmount(claimable)} rETH</span>
 									{#if usdClaimable}
@@ -502,7 +502,7 @@
 
 	<p class="mt-4 text-xs opacity-50">
 		The patron list and lifetime donated totals come from the subgraph and are cached locally for {CACHE_TTL_MS / 60000}
-		minutes — use Refresh for the latest. Currently deposited and claimable yield are both read live on-chain every visit, since they change continuously.
+		minutes - use Refresh for the latest. Currently deposited and claimable yield are both read live on-chain every visit, since they change continuously.
 		Harvesting is permissionless: anyone can harvest for anyone, and yield always routes to that patron's own chosen causes.
 	</p>
 </div>

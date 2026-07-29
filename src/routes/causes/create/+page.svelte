@@ -93,7 +93,7 @@
 			</div>
 		{:else if !FIRSTFRUITS_ADDRESS}
 			<div class="card p-10 text-center opacity-75">
-				The vault hasn't been deployed yet — set <code>VITE_FIRSTFRUITS_ADDRESS</code> once it is.
+				The vault hasn't been deployed yet - set <code>VITE_FIRSTFRUITS_ADDRESS</code> once it is.
 			</div>
 		{:else if createdCauseId}
 			<div class="card border border-surface-200-800 bg-surface-50-950 p-8 text-center">
@@ -113,7 +113,7 @@
 					</svg>
 				</span>
 				<h2 class="mt-4 text-lg font-semibold">Cause created</h2>
-				<p class="mt-1 text-sm opacity-60">Cause #{createdCauseId} is live — patrons can start allocating yield to it now.</p>
+				<p class="mt-1 text-sm opacity-60">Cause #{createdCauseId} is live - patrons can start allocating yield to it now.</p>
 				<div class="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
 					<a href="/causes" class="btn preset-tonal">View all causes</a>
 					<button type="button" class="btn preset-tonal" onclick={resetForm}>Create another</button>

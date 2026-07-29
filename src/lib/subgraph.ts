@@ -250,6 +250,11 @@ export async function fetchPatronLeaderboard(): Promise<PatronLeaderboardRow[]> 
 }
 
 export type ActivityItem = {
+	// The subgraph entity's own id (txHash + logIndex) — unique per event even
+	// when a single transaction emits more than one of the same kind (e.g. a
+	// harvest that allocates yield to several causes at once emits multiple
+	// YieldAllocated events sharing one transactionHash).
+	id: string;
 	kind: 'deposit' | 'yieldAllocated' | 'harvested' | 'withdrawal' | 'causeCreated';
 	patron?: string;
 	rethAmount?: string;
@@ -272,22 +277,22 @@ export async function fetchRecentActivity(limit = 5): Promise<ActivityItem[]> {
 
 	const query = `{
 		depositeds(orderBy: blockTimestamp, orderDirection: desc, first: ${limit}) {
-			patron rethAmount principalAdded blockTimestamp transactionHash
+			id patron rethAmount principalAdded blockTimestamp transactionHash
 		}
 		yieldAllocateds(orderBy: blockTimestamp, orderDirection: desc, first: ${limit}) {
-			patron causeId rethAmount blockTimestamp transactionHash
+			id patron causeId rethAmount blockTimestamp transactionHash
 		}
 		harvesteds(orderBy: blockTimestamp, orderDirection: desc, first: ${limit}) {
-			patron rethAmount blockTimestamp transactionHash
+			id patron rethAmount blockTimestamp transactionHash
 		}
 		withdrawns(orderBy: blockTimestamp, orderDirection: desc, first: ${limit}) {
-			patron etherAmount blockTimestamp transactionHash
+			id patron etherAmount blockTimestamp transactionHash
 		}
 		withdrawnReths(orderBy: blockTimestamp, orderDirection: desc, first: ${limit}) {
-			patron rethAmount blockTimestamp transactionHash
+			id patron rethAmount blockTimestamp transactionHash
 		}
 		causeCreateds(orderBy: blockTimestamp, orderDirection: desc, first: ${limit}) {
-			causeId name blockTimestamp transactionHash
+			id causeId name blockTimestamp transactionHash
 		}
 	}`;
 

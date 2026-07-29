@@ -27,7 +27,7 @@
 	let items = $state<MarqueeItem[]>([]);
 
 	// The subgraph only knows what was true at creation (CauseCreated's
-	// name/owner/recipient) — it doesn't track later ownership transfers,
+	// name/owner/recipient) - it doesn't track later ownership transfers,
 	// active/inactive toggles, or harvested totals. So we use it just to get
 	// the ordered ID list, then read live state straight from the contract
 	// per cause, same as the /causes page does.
@@ -52,7 +52,7 @@
 			}));
 			items = await hydrateWithChainData(base);
 		} catch {
-			// No subgraph configured, or nothing indexed yet — just don't show
+			// No subgraph configured, or nothing indexed yet - just don't show
 			// the marquee rather than fake it.
 			items = [];
 		}

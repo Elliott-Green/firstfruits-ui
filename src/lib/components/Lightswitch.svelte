@@ -25,7 +25,7 @@
 <svelte:head>
 	<script>
 		// Only override data-mode if the user has actually chosen a preference
-		// before. Otherwise leave app.html's default alone — don't invent a
+		// before. Otherwise leave app.html's default alone - don't invent a
 		// second fallback here that can disagree with it.
 		const storedMode = localStorage.getItem('mode');
 		if (storedMode) document.documentElement.setAttribute('data-mode', storedMode);

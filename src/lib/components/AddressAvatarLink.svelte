@@ -2,7 +2,7 @@
 	let { address }: { address: string } = $props();
 
 	// Deterministic color from the address, so the same address always gets
-	// the same little avatar — no identicon library, just a hashed hue.
+	// the same little avatar - no identicon library, just a hashed hue.
 	function colorFromAddress(addr: string): string {
 		let hash = 0;
 		for (let i = 2; i < addr.length; i++) {

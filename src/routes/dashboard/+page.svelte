@@ -16,7 +16,7 @@
 	import { ogImageUrl } from '$lib/og';
 
 	const PAGE_TITLE = 'Dashboard';
-	const PAGE_DESCRIPTION = 'Deposit ETH or rETH, choose your cause splits, and harvest yield — manage your Firstfruits vault position.';
+	const PAGE_DESCRIPTION = 'Deposit ETH or rETH, choose your cause splits, and harvest yield - manage your Firstfruits vault position.';
 
 	let { data } = $props();
 	const metaTags = $derived.by(() => {
@@ -48,7 +48,7 @@
 	};
 
 	// An ETH deposit goes straight into RocketPool's deposit pool (see
-	// _depositEther in the vault), which enforces its own minimum — currently
+	// _depositEther in the vault), which enforces its own minimum - currently
 	// 0.01 ETH. Below that, the tx reverts on RocketPool's side, not ours.
 	// Only applies to ETH deposits: rETH deposits are a plain token transfer
 	// into the vault and never touch RocketPool's deposit pool.
@@ -60,13 +60,13 @@
 	let walletEthBalance = $state<bigint | undefined>(undefined);
 	let walletRethBalance = $state<bigint | undefined>(undefined);
 	let rethAllowance = $state<bigint | undefined>(undefined);
-	// Lifetime total, from the subgraph — best-effort, not required for the
+	// Lifetime total, from the subgraph - best-effort, not required for the
 	// rest of the page to work if it's slow or unreachable.
 	let totalDonatedReth = $state<bigint | undefined>(undefined);
 	let loading = $state(false);
 	let error = $state<string | undefined>(undefined);
 
-	// Global (not per-account) — fetched once on mount.
+	// Global (not per-account) - fetched once on mount.
 	let usdPrices = $state<UsdPrices>({ ethUsd: undefined });
 	// rETH → ETH redemption rate, for pricing rETH amounts in USD (see
 	// convertRethToUsd's doc comment for why this isn't just a quoted rETH price).
@@ -105,7 +105,7 @@
 	// instead of five separate inline messages.
 	let errorModalMessage = $state<string | undefined>(undefined);
 
-	// Only causes the patron has actually allocated to ever get a slider row —
+	// Only causes the patron has actually allocated to ever get a slider row -
 	// this is what keeps the editor usable at 100+ causes in the catalog. The
 	// full catalog (allCauses) only backs the search-to-add box below, never
 	// renders as a list of its own.
@@ -128,7 +128,7 @@
 	);
 
 	// Drives both the "Save Splits" button's visibility and the getting-started
-	// wizard below — a patron with nothing withdrawable hasn't deposited yet,
+	// wizard below - a patron with nothing withdrawable hasn't deposited yet,
 	// so "Save Splits" alone would just be a no-op designate() with no stake
 	// behind it, and easy to confuse with the Deposit button (which already
 	// re-saves splits in the same transaction).
@@ -139,7 +139,7 @@
 	const wizardDepositDone = $derived(hasWithdrawableBalance);
 	const wizardHarvestDone = $derived((totalDonatedReth ?? 0n) > 0n);
 	// Manually dismissable (and remembered per-address in localStorage) on top
-	// of auto-hiding once they've actually harvested — someone might not want
+	// of auto-hiding once they've actually harvested - someone might not want
 	// it staring at them before then either.
 	let wizardDismissed = $state(false);
 	const showWizard = $derived(!wizardHarvestDone && !wizardDismissed);
@@ -157,13 +157,13 @@
 		try {
 			localStorage.setItem(wizardDismissKey(account.address), 'true');
 		} catch {
-			// Private browsing or storage disabled — dismissal just won't
+			// Private browsing or storage disabled - dismissal just won't
 			// survive a reload, which is a fine fallback.
 		}
 	}
 
 	// Shows suggestions as soon as the box is focused (a real dropdown, not
-	// just a filter that only appears once you start typing) — with a query,
+	// just a filter that only appears once you start typing) - with a query,
 	// it filters by name; without one, it's just the first few not-yet-added
 	// causes.
 	const addCauseResults = $derived.by(() => {
@@ -194,7 +194,7 @@
 	}
 
 	// Causes have no logo/image at the contract level, and we're not building
-	// a client-side image or category system just to decorate a row — so each
+	// a client-side image or category system just to decorate a row - so each
 	// avatar is just the cause's own initial in a deterministically hashed
 	// color (same idea as AddressAvatarLink's hashed avatar color).
 	const CAUSE_COLORS: { bg: string; fg: string }[] = [
@@ -224,7 +224,7 @@
 
 	const canWithdraw = $derived(withdrawToken === 'eth' ? (withdrawableEth ?? 0n) > 0n : (position?.rethBalance ?? 0n) > 0n);
 
-	// Whether the balance "Max" needs is actually loaded yet — used to disable
+	// Whether the balance "Max" needs is actually loaded yet - used to disable
 	// the button instead of it silently doing nothing when clicked too early.
 	const depositMaxReady = $derived(depositToken === 'eth' ? walletEthBalance !== undefined : walletRethBalance !== undefined);
 	const withdrawMaxReady = $derived(withdrawToken === 'eth' ? withdrawableEth !== undefined : position !== undefined);
@@ -248,7 +248,7 @@
 		if (!FIRSTFRUITS_ADDRESS) return;
 		// Captured so a slower, older call (e.g. from just before the wallet
 		// switched accounts) can detect it's been superseded and bail instead of
-		// overwriting the newer, correct values — this is what made balances
+		// overwriting the newer, correct values - this is what made balances
 		// intermittently show stale/wrong-account data.
 		const requestId = ++positionRequestId;
 		loading = true;
@@ -264,7 +264,7 @@
 					vault.pendingYield(patron),
 					vault.withdrawableEther(patron),
 					provider.getBalance(patron),
-					// Caught individually — a hiccup reading the rETH token
+					// Caught individually - a hiccup reading the rETH token
 					// shouldn't blank out the ETH-side balances too.
 					reth?.balanceOf(patron).catch(() => undefined) ?? Promise.resolve(undefined),
 					reth?.allowance(patron, FIRSTFRUITS_ADDRESS).catch(() => undefined) ?? Promise.resolve(undefined),
@@ -296,7 +296,7 @@
 			const vault = new Contract(FIRSTFRUITS_ADDRESS, firstfruitsAbi, getActiveProvider());
 
 			// Only resolve names for the patron's OWN allocations (bounded by
-			// MAX_ALLOCATIONS, effectively single digits in practice) — never for
+			// MAX_ALLOCATIONS, effectively single digits in practice) - never for
 			// every cause in the vault, which is what made this unusable at scale.
 			const allocations = (await vault.allocationsOf(patron)) as { causeId: bigint; bps: bigint }[];
 			const resolvedSplits = await Promise.all(
@@ -308,7 +308,7 @@
 					})
 			);
 
-			// The full catalog, for the search-to-add box only — one indexed
+			// The full catalog, for the search-to-add box only - one indexed
 			// subgraph query rather than N contract calls, so this stays cheap
 			// no matter how many causes exist.
 			let resolvedAllCauses: CauseOption[] = [];
@@ -508,7 +508,7 @@
 		</div>
 	{:else if !FIRSTFRUITS_ADDRESS}
 		<div class="mt-6 card p-10 text-center opacity-75">
-			The vault hasn't been deployed yet — set <code>VITE_FIRSTFRUITS_ADDRESS</code> once it is.
+			The vault hasn't been deployed yet - set <code>VITE_FIRSTFRUITS_ADDRESS</code> once it is.
 		</div>
 	{:else}
 		{#snippet tokenIcon(token: 'eth' | 'reth')}
@@ -635,7 +635,7 @@
 				     vertical center (22px = half of h-11). Step 1/3 anchor their content
 				     to the row's own edges (not centered in an equal third) so circle 1's
 				     center sits a fixed 22px from the left edge and circle 3's a fixed
-				     22px from the right — using the full card width instead of the empty
+				     22px from the right - using the full card width instead of the empty
 				     margin equal-thirds centering left on each side. Circle 2 stays
 				     centered in the middle column, which lands it at exactly 50%. -->
 				<div class="relative mt-6 hidden sm:block">
@@ -654,7 +654,7 @@
 						{@render wizardStep(
 							2,
 							'Deposit ETH or rETH',
-							'Stake into the vault — this saves your splits too.',
+							'Stake into the vault - this saves your splits too.',
 							wizardDepositStatus,
 							'center'
 						)}
@@ -672,7 +672,7 @@
 					{@render wizardStep(
 						2,
 						'Deposit ETH or rETH',
-						'Stake into the vault — this saves your splits too.',
+						'Stake into the vault - this saves your splits too.',
 						wizardDepositStatus,
 						'center'
 					)}
@@ -729,7 +729,7 @@
 						class:dark:text-green-400={harvestSuccess}
 						class:opacity-50={!harvestSuccess}
 					>
-						{harvestSuccess ? 'Harvested — yield routed to your causes.' : 'Routes straight to your causes on harvest.'}
+						{harvestSuccess ? 'Harvested - yield routed to your causes.' : 'Routes straight to your causes on harvest.'}
 					</p>
 					<button type="button" class="btn preset-tonal btn-sm" disabled={harvesting || !pendingYieldReth} onclick={harvest}>
 						{harvesting ? 'Harvesting…' : 'Harvest'}
@@ -754,12 +754,12 @@
 			<p class="mt-4 text-sm text-red-500">{error}</p>
 		{/if}
 
-		<!-- Cause allocation editor — comes before Deposit/Withdraw since both
+		<!-- Cause allocation editor - comes before Deposit/Withdraw since both
 		     deposit forms fold the splits set here into the same transaction. -->
 		<div class="mt-8 card bg-surface-100-900 p-6">
 			<div class="flex items-center justify-between">
 				<h2 class="font-semibold">Your Cause Allocations</h2>
-				<p class="text-sm opacity-60">Must add up to {bpsDenominator} bps (100%) — no undesignated leftover</p>
+				<p class="text-sm opacity-60">Must add up to {bpsDenominator} bps (100%) - no undesignated leftover</p>
 			</div>
 
 			<!-- Search-to-add: the catalog can be 100+ causes, but only the ones
@@ -796,7 +796,7 @@
 			{#if splitsLoading}
 				<p class="mt-4 text-sm opacity-50">Loading your allocations…</p>
 			{:else if splits.length === 0}
-				<p class="mt-4 text-sm opacity-50">You haven't allocated to any causes yet — search above to add one.</p>
+				<p class="mt-4 text-sm opacity-50">You haven't allocated to any causes yet - search above to add one.</p>
 			{:else}
 				<div class="mt-4 flex flex-col gap-4">
 					{#each splits as split (split.causeId)}
@@ -867,7 +867,7 @@
 					</button>
 				{:else}
 					<p class="mt-4 text-center text-xs opacity-50">
-						Depositing below saves these splits too — there's nothing to save on its own until you've deposited.
+						Depositing below saves these splits too - there's nothing to save on its own until you've deposited.
 					</p>
 				{/if}
 			{/if}
@@ -877,7 +877,7 @@
 			<!-- Deposit -->
 			<div class="card bg-surface-100-900 p-6">
 				<h2 class="font-semibold">Deposit</h2>
-				<p class="mt-1 text-xs opacity-60">Deposits and saves the splits above in one transaction — they must add up to 100% first.</p>
+				<p class="mt-1 text-xs opacity-60">Deposits and saves the splits above in one transaction - they must add up to 100% first.</p>
 
 				<div class="mt-4 flex items-start justify-between gap-3">
 					<div class="inline-flex shrink-0 rounded-full bg-surface-200-800 p-1">
@@ -947,7 +947,7 @@
 			<!-- Withdraw -->
 			<div class="card bg-surface-100-900 p-6">
 				<h2 class="font-semibold">Withdraw</h2>
-				<p class="mt-1 text-xs opacity-60">Your principal, in either form — always yours, anytime.</p>
+				<p class="mt-1 text-xs opacity-60">Your principal, in either form - always yours, anytime.</p>
 
 				<div class="mt-4 flex items-start justify-between gap-3">
 					<div class="inline-flex shrink-0 rounded-full bg-surface-200-800 p-1">

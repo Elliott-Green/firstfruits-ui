@@ -21,7 +21,7 @@
 	let claimingCauseId = $state<string | undefined>(undefined);
 	let errorModalMessage = $state<string | undefined>(undefined);
 
-	// Only the causes this wallet is the *recipient* of — this is deliberately
+	// Only the causes this wallet is the *recipient* of - this is deliberately
 	// not "owner", per the ask: claiming is a recipient concern, and managing
 	// status/recipient (the causes-page cards) is a separate, owner concern.
 	async function loadClaimableCauses(recipientAddress: string) {
@@ -41,7 +41,7 @@
 			);
 			claimableCauses = rows.filter((c) => c.recipient.toLowerCase() === recipientAddress.toLowerCase() && c.claimableReth > 0n);
 		} catch {
-			// Best-effort, informational banner — fail quietly rather than
+			// Best-effort, informational banner - fail quietly rather than
 			// breaking every page in the app over it.
 			claimableCauses = [];
 		}
@@ -69,7 +69,7 @@
 		return formatUsd(Number(formatEther(ethWei)) * usdPrices.ethUsd);
 	}
 
-	// Ether only, by design — claimReth would let a recipient pull rETH
+	// Ether only, by design - claimReth would let a recipient pull rETH
 	// instead, but the ask here is specifically ETH, valued in USD.
 	async function claim(cause: ClaimableCause) {
 		claimingCauseId = cause.id;

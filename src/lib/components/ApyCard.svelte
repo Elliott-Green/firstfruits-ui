@@ -36,7 +36,7 @@
 		{#if loading}
 			…
 		{:else if error || current === undefined}
-			—
+			-
 		{:else}
 			{current.toFixed(2)}%
 		{/if}
