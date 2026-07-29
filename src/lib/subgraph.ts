@@ -190,21 +190,22 @@ export type PatronLeaderboardRow = {
 	address: string;
 	firstDepositTimestamp: number;
 	active: boolean;
-	// Lifetime totals — a patron who has since withdrawn keeps their history.
-	totalDepositedEther: bigint;
+	// Lifetime total — a patron who has since withdrawn keeps this history.
+	// Current principal is a live on-chain value (see withdrawableEther), not
+	// something the subgraph can answer, so it isn't part of this row.
 	totalDonatedReth: bigint;
 };
 
 /**
- * Every patron who's ever deposited, with lifetime deposited/donated totals —
- * the data behind a leaderboard. This is the expensive query in this file:
+ * Every patron who's ever deposited, with their lifetime donated total — the
+ * data behind a leaderboard. This is the expensive query in this file:
  * there's no per-patron running total in the schema (Patron only tracks
- * firstDepositTimestamp/active), so it pulls the full Deposited and
- * YieldAllocated event lists and reduces them client-side. Bounded to the
- * first 1000 of each, same as the other list queries here — fine for now,
- * but the first thing to revisit (cursor-paginate) once the protocol has
- * more history than that. Callers should cache this aggressively (e.g. in
- * localStorage) rather than re-running it on every page visit.
+ * firstDepositTimestamp/active), so it pulls the full YieldAllocated event
+ * list and reduces it client-side. Bounded to the first 1000, same as the
+ * other list queries here — fine for now, but the first thing to revisit
+ * (cursor-paginate) once the protocol has more history than that. Callers
+ * should cache this aggressively (e.g. in localStorage) rather than
+ * re-running it on every page visit.
  */
 export async function fetchPatronLeaderboard(): Promise<PatronLeaderboardRow[]> {
 	if (!SUBGRAPH_URL) throw new Error('VITE_SUBGRAPH_URL is not set');
@@ -214,10 +215,6 @@ export async function fetchPatronLeaderboard(): Promise<PatronLeaderboardRow[]> 
 			id
 			firstDepositTimestamp
 			active
-		}
-		depositeds(first: 1000) {
-			patron
-			principalAdded
 		}
 		yieldAllocateds(first: 1000) {
 			patron
@@ -235,12 +232,6 @@ export async function fetchPatronLeaderboard(): Promise<PatronLeaderboardRow[]> 
 	const json = await res.json();
 	if (json.errors) throw new Error(json.errors[0]?.message ?? 'Subgraph query error');
 
-	const depositedByPatron = new Map<string, bigint>();
-	for (const row of json.data.depositeds as { patron: string; principalAdded: string }[]) {
-		const key = row.patron.toLowerCase();
-		depositedByPatron.set(key, (depositedByPatron.get(key) ?? 0n) + BigInt(row.principalAdded));
-	}
-
 	const donatedByPatron = new Map<string, bigint>();
 	for (const row of json.data.yieldAllocateds as { patron: string; rethAmount: string }[]) {
 		const key = row.patron.toLowerCase();
@@ -253,7 +244,6 @@ export async function fetchPatronLeaderboard(): Promise<PatronLeaderboardRow[]> 
 			address: p.id,
 			firstDepositTimestamp: Number(p.firstDepositTimestamp),
 			active: p.active,
-			totalDepositedEther: depositedByPatron.get(key) ?? 0n,
 			totalDonatedReth: donatedByPatron.get(key) ?? 0n
 		};
 	});

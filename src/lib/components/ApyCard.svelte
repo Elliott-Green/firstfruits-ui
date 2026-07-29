@@ -30,7 +30,7 @@
 	});
 </script>
 
-<div class="card p-6 bg-surface-100-900">
+<div class="card bg-surface-100-900 p-6">
 	<p class="text-sm opacity-60">Rocket Pool staking APY</p>
 	<p class="mt-1 text-2xl font-semibold">
 		{#if loading}
@@ -43,7 +43,7 @@
 	</p>
 	{#if changeVsStart !== undefined}
 		<p class="mt-1 text-xs opacity-50">
-			<span class:text-green-600={changeVsStart >= 0} class:text-red-500={changeVsStart < 0}>
+			<span class:text-green-600={changeVsStart >= 0} class:dark:text-green-400={changeVsStart >= 0} class:text-red-500={changeVsStart < 0}>
 				{changeVsStart >= 0 ? '+' : ''}{changeVsStart.toFixed(1)}%
 			</span>
 			over {DAYS}D

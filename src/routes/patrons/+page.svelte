@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Contract, formatEther } from 'ethers';
-	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
+	import { Dialog, Portal, usePagination } from '@skeletonlabs/skeleton-svelte';
+	import { MetaTags, deepMerge } from 'svelte-meta-tags';
+	import { page } from '$app/state';
 	import { getActiveProvider } from '$lib/contracts/provider';
 	import { getVaultWithSigner } from '$lib/contracts/signer';
 	import { FIRSTFRUITS_ADDRESS, firstfruitsAbi } from '$lib/contracts/firstfruits';
@@ -9,7 +11,25 @@
 	import { fetchRethExchangeRate } from '$lib/contracts/reth';
 	import { readCache, writeCache, cacheWrittenAt } from '$lib/localCache';
 	import AddressLink from '$lib/components/AddressLink.svelte';
+	import TablePagination from '$lib/components/TablePagination.svelte';
 	import { getContractErrorMessage } from '$lib/errors';
+	import { ogImageUrl } from '$lib/og';
+
+	const PAGE_SIZE = 25;
+
+	const PAGE_TITLE = 'Patrons';
+	const PAGE_DESCRIPTION = "See every patron's current stake and lifetime yield donated to causes on Firstfruits.";
+
+	let { data } = $props();
+	const metaTags = $derived.by(() => {
+		const image = ogImageUrl(page.url.origin, PAGE_TITLE, PAGE_DESCRIPTION);
+		return deepMerge(data.baseMetaTags, {
+			title: PAGE_TITLE,
+			description: PAGE_DESCRIPTION,
+			openGraph: { title: PAGE_TITLE, images: [{ url: image, width: 1200, height: 630, alt: PAGE_TITLE }] },
+			twitter: { title: PAGE_TITLE, image }
+		});
+	});
 
 	const SUBGRAPH_CONFIGURED = Boolean(import.meta.env.VITE_SUBGRAPH_URL);
 
@@ -40,6 +60,14 @@
 	// and a stale number here would be actively misleading right where people
 	// click "Harvest".
 	let pendingYields = $state<Map<string, bigint>>(new Map());
+	// Live on-chain current principal per patron (lowercased address -> ETH
+	// wei), same definition as the dashboard's "Withdrawable principal". Not
+	// the same thing as lifetime deposits: a patron who has withdrawn keeps
+	// their lifetime-donated history, but their current stake can be far
+	// smaller (or zero) — this is what "how much do they currently have
+	// deposited" actually means, so like pendingYields it's read live and
+	// never cached.
+	let currentPrincipal = $state<Map<string, bigint>>(new Map());
 	let selected = $state<Set<string>>(new Set());
 	let harvestingAddresses = $state<Set<string>>(new Set());
 	let harvestingBulk = $state(false);
@@ -58,6 +86,7 @@
 			sortKey = key;
 			sortDir = 'desc';
 		}
+		patronsPagination().setPage(1);
 	}
 
 	function cmpBigint(a: bigint, b: bigint): number {
@@ -69,27 +98,31 @@
 		return [...patrons].sort((a, b) => {
 			switch (sortKey) {
 				case 'deposited':
-					return cmpBigint(a.totalDepositedEther, b.totalDepositedEther) * dir;
+					return cmpBigint(currentPrincipal.get(a.address.toLowerCase()) ?? 0n, currentPrincipal.get(b.address.toLowerCase()) ?? 0n) * dir;
 				case 'donated':
 					return cmpBigint(a.totalDonatedReth, b.totalDonatedReth) * dir;
 				case 'claimable':
-					return (
-						cmpBigint(pendingYields.get(a.address.toLowerCase()) ?? 0n, pendingYields.get(b.address.toLowerCase()) ?? 0n) * dir
-					);
+					return cmpBigint(pendingYields.get(a.address.toLowerCase()) ?? 0n, pendingYields.get(b.address.toLowerCase()) ?? 0n) * dir;
 				case 'firstDeposit':
 					return (a.firstDepositTimestamp - b.firstDepositTimestamp) * dir;
 			}
 		});
 	});
 
-	const totalDeposited = $derived(patrons.reduce((sum, p) => sum + p.totalDepositedEther, 0n));
+	const patronsPagination = usePagination(() => ({
+		id: 'patrons-pagination',
+		count: sortedPatrons.length,
+		defaultPageSize: PAGE_SIZE
+	}));
+	const pagedPatrons = $derived(patronsPagination().slice(sortedPatrons));
+
+	const totalDepositedLoaded = $derived(patrons.every((p) => currentPrincipal.has(p.address.toLowerCase())));
+	const totalDeposited = $derived([...currentPrincipal.values()].reduce((sum, wei) => sum + wei, 0n));
 	const totalDonated = $derived(patrons.reduce((sum, p) => sum + p.totalDonatedReth, 0n));
 
 	// Only patrons with actually-claimable yield are selectable — no point
 	// selecting (or paying gas to harvest) a zero balance.
-	const selectableAddresses = $derived(
-		patrons.map((p) => p.address.toLowerCase()).filter((a) => (pendingYields.get(a) ?? 0n) > 0n)
-	);
+	const selectableAddresses = $derived(patrons.map((p) => p.address.toLowerCase()).filter((a) => (pendingYields.get(a) ?? 0n) > 0n));
 	const allSelected = $derived(selectableAddresses.length > 0 && selectableAddresses.every((a) => selected.has(a)));
 
 	function toggleSelectAll() {
@@ -136,6 +169,29 @@
 		pendingYields = next;
 	}
 
+	// Same shape as loadPendingYields — withdrawableEther() is the live,
+	// currently-staked principal (capped at rETH's current redemption value),
+	// not a historical sum.
+	async function loadCurrentPrincipal(addresses: string[]) {
+		if (!FIRSTFRUITS_ADDRESS || addresses.length === 0) return;
+		const vault = new Contract(FIRSTFRUITS_ADDRESS, firstfruitsAbi, getActiveProvider());
+		const entries = await Promise.all(
+			addresses.map(async (address): Promise<[string, bigint] | undefined> => {
+				try {
+					const etherAmount = await vault.withdrawableEther(address);
+					return [address.toLowerCase(), etherAmount as bigint];
+				} catch {
+					return undefined;
+				}
+			})
+		);
+		const next = new Map(currentPrincipal);
+		for (const entry of entries) {
+			if (entry) next.set(entry[0], entry[1]);
+		}
+		currentPrincipal = next;
+	}
+
 	function formatAmount(wei: bigint): string {
 		// 6dp, not 4 — at 4dp small-but-distinct rETH amounts (e.g. lifetime
 		// donated vs. currently-pending yield for a patron who's barely
@@ -178,6 +234,7 @@
 			if (cached) {
 				patrons = cached;
 				cachedAt = cacheWrittenAt(CACHE_KEY);
+				patronsPagination().setPage(1);
 				loadPrices();
 				return;
 			}
@@ -189,6 +246,7 @@
 			patrons = rows;
 			writeCache(CACHE_KEY, rows);
 			cachedAt = Date.now();
+			patronsPagination().setPage(1);
 			loadPrices();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load patrons.';
@@ -259,7 +317,17 @@
 			loadPendingYields(unresolved).catch(() => {});
 		}
 	});
+
+	// Same convergence-guard shape as the ENS/pendingYields effects above.
+	$effect(() => {
+		const unresolved = patrons.map((p) => p.address).filter((a) => !currentPrincipal.has(a.toLowerCase()));
+		if (unresolved.length > 0) {
+			loadCurrentPrincipal(unresolved).catch(() => {});
+		}
+	});
 </script>
+
+<MetaTags {...metaTags} />
 
 <div class="px-4 py-8 lg:px-18">
 	<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -271,7 +339,7 @@
 			{#if cachedAt}
 				<span>Updated {relativeTime(cachedAt / 1000)}</span>
 			{/if}
-			<button type="button" class="btn btn-sm preset-tonal" onclick={() => loadPatrons(true)} disabled={loading}>
+			<button type="button" class="btn preset-tonal btn-sm" onclick={() => loadPatrons(true)} disabled={loading}>
 				{loading ? 'Refreshing…' : 'Refresh'}
 			</button>
 		</div>
@@ -289,15 +357,15 @@
 		<p class="opacity-60">No one has deposited yet.</p>
 	{:else}
 		<p class="mb-4 text-sm opacity-60">
-			{patrons.length} patron{patrons.length === 1 ? '' : 's'} · {formatAmount(totalDeposited)} ETH deposited in total · {formatAmount(
-				totalDonated
-			)} rETH donated to causes
+			{patrons.length} patron{patrons.length === 1 ? '' : 's'} · {totalDepositedLoaded
+				? `${formatAmount(totalDeposited)} ETH currently deposited`
+				: '…'} · {formatAmount(totalDonated)} rETH donated to causes
 		</p>
 
 		{#if selected.size > 0}
 			<div class="mb-3 flex items-center justify-between rounded-lg bg-primary-500/10 px-4 py-2 text-sm">
 				<span>{selected.size} selected</span>
-				<button type="button" class="btn btn-sm preset-filled-primary-500" onclick={harvestSelected} disabled={harvestingBulk}>
+				<button type="button" class="btn preset-tonal btn-sm" onclick={harvestSelected} disabled={harvestingBulk}>
 					{harvestingBulk ? 'Harvesting…' : `Harvest Selected (${selected.size})`}
 				</button>
 			</div>
@@ -319,8 +387,13 @@
 						<th class="px-4 py-3 font-medium">#</th>
 						<th class="px-4 py-3 font-medium">Patron</th>
 						<th class="px-4 py-3 font-medium">
-							<button type="button" class="flex items-center gap-1 hover:text-primary-500" onclick={() => toggleSort('deposited')}>
-								Total Deposited {sortKey === 'deposited' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+							<button
+								type="button"
+								class="flex items-center gap-1 hover:text-primary-500"
+								onclick={() => toggleSort('deposited')}
+								title="Ether currently staked in the vault right now (withdrawable principal) — not a lifetime total"
+							>
+								Currently Deposited {sortKey === 'deposited' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
 							</button>
 						</th>
 						<th class="px-4 py-3 font-medium">
@@ -352,10 +425,12 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each sortedPatrons as patron, i (patron.address)}
+					{#each pagedPatrons as patron, i (patron.address)}
+						{@const rank = patronsPagination().pageRange.start + i}
 						{@const key = patron.address.toLowerCase()}
 						{@const claimable = pendingYields.get(key)}
-						{@const usdDeposited = ethUsd(patron.totalDepositedEther)}
+						{@const deposited = currentPrincipal.get(key)}
+						{@const usdDeposited = deposited !== undefined ? ethUsd(deposited) : undefined}
 						{@const usdDonated = rethUsd(patron.totalDonatedReth)}
 						{@const usdClaimable = claimable !== undefined ? rethUsd(claimable) : undefined}
 						<tr class="border-b border-surface-200-800 last:border-0 hover:bg-surface-100-900/50">
@@ -369,19 +444,23 @@
 								/>
 							</td>
 							<td class="px-4 py-3 opacity-60">
-								{#if sortKey === 'donated' && i < 3}
-									{['🥇', '🥈', '🥉'][i]}
+								{#if sortKey === 'donated' && rank < 3}
+									{['🥇', '🥈', '🥉'][rank]}
 								{:else}
-									{i + 1}
+									{rank + 1}
 								{/if}
 							</td>
 							<td class="px-4 py-3">
 								<AddressLink address={patron.address} ensName={ensNames.get(key)} />
 							</td>
 							<td class="px-4 py-3">
-								<span class="font-medium">{formatAmount(patron.totalDepositedEther)} ETH</span>
-								{#if usdDeposited}
-									<span class="text-xs opacity-50">({usdDeposited})</span>
+								{#if deposited === undefined}
+									<span class="opacity-40">…</span>
+								{:else}
+									<span class="font-medium">{formatAmount(deposited)} ETH</span>
+									{#if usdDeposited}
+										<span class="text-xs opacity-50">({usdDeposited})</span>
+									{/if}
 								{/if}
 							</td>
 							<td class="px-4 py-3">
@@ -406,7 +485,7 @@
 							<td class="px-4 py-3">
 								<button
 									type="button"
-									class="btn btn-sm preset-tonal"
+									class="btn preset-tonal btn-sm"
 									disabled={!claimable || harvestingAddresses.has(key)}
 									onclick={() => harvestOne(patron.address)}
 								>
@@ -418,12 +497,13 @@
 				</tbody>
 			</table>
 		</div>
+		<TablePagination pagination={patronsPagination} />
 	{/if}
 
 	<p class="mt-4 text-xs opacity-50">
-		Deposited/donated totals come from the subgraph and are cached locally for {CACHE_TTL_MS / 60000} minutes — use Refresh
-		for the latest. Claimable yield is read live on-chain every visit, since it changes continuously. Harvesting is
-		permissionless: anyone can harvest for anyone, and yield always routes to that patron's own chosen causes.
+		The patron list and lifetime donated totals come from the subgraph and are cached locally for {CACHE_TTL_MS / 60000}
+		minutes — use Refresh for the latest. Currently deposited and claimable yield are both read live on-chain every visit, since they change continuously.
+		Harvesting is permissionless: anyone can harvest for anyone, and yield always routes to that patron's own chosen causes.
 	</p>
 </div>
 
@@ -440,7 +520,7 @@
 				<Dialog.Title class="text-lg font-semibold text-red-500">Something went wrong</Dialog.Title>
 				<Dialog.Description class="mt-2 text-sm opacity-70">{errorModalMessage}</Dialog.Description>
 				<div class="mt-6 flex justify-end">
-					<Dialog.CloseTrigger class="btn preset-filled-primary-500">Close</Dialog.CloseTrigger>
+					<Dialog.CloseTrigger class="btn preset-tonal">Close</Dialog.CloseTrigger>
 				</div>
 			</Dialog.Content>
 		</Dialog.Positioner>

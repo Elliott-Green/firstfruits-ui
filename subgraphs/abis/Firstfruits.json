@@ -1,0 +1,903 @@
+[
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_rocketStorage",
+				"type": "address"
+			},
+			{ "internalType": "address", "name": "_initialOwner", "type": "address" }
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{ "inputs": [], "name": "AlreadyInitialized", "type": "error" },
+	{
+		"inputs": [
+			{ "internalType": "uint256", "name": "requested", "type": "uint256" },
+			{ "internalType": "uint256", "name": "withdrawable", "type": "uint256" }
+		],
+		"name": "ExceedsWithdrawable",
+		"type": "error"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "causeId", "type": "uint256" }],
+		"name": "InactiveCause",
+		"type": "error"
+	},
+	{ "inputs": [], "name": "NewOwnerIsZeroAddress", "type": "error" },
+	{ "inputs": [], "name": "NoHandoverRequest", "type": "error" },
+	{ "inputs": [], "name": "NoPosition", "type": "error" },
+	{ "inputs": [], "name": "NoSurplus", "type": "error" },
+	{ "inputs": [], "name": "NotCauseOwner", "type": "error" },
+	{ "inputs": [], "name": "NotCauseOwnerOrRecipient", "type": "error" },
+	{ "inputs": [], "name": "NotPendingCauseOwner", "type": "error" },
+	{ "inputs": [], "name": "NothingToClaim", "type": "error" },
+	{ "inputs": [], "name": "Reentrancy", "type": "error" },
+	{
+		"inputs": [{ "internalType": "uint256", "name": "count", "type": "uint256" }],
+		"name": "TooManyAllocations",
+		"type": "error"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "totalBps", "type": "uint256" }],
+		"name": "TotalBpsExceeded",
+		"type": "error"
+	},
+	{ "inputs": [], "name": "Unauthorized", "type": "error" },
+	{ "inputs": [], "name": "UnexpectedEther", "type": "error" },
+	{
+		"inputs": [{ "internalType": "uint256", "name": "causeId", "type": "uint256" }],
+		"name": "UnknownCause",
+		"type": "error"
+	},
+	{ "inputs": [], "name": "UnsortedAllocations", "type": "error" },
+	{ "inputs": [], "name": "ZeroAddress", "type": "error" },
+	{ "inputs": [], "name": "ZeroAmount", "type": "error" },
+	{
+		"inputs": [{ "internalType": "uint256", "name": "causeId", "type": "uint256" }],
+		"name": "ZeroBps",
+		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "etherAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "BankWithdrawn",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "BankWithdrawnReth",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "active",
+				"type": "bool"
+			}
+		],
+		"name": "CauseActiveSet",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "recipient",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "name",
+				"type": "string"
+			}
+		],
+		"name": "CauseCreated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "pendingOwner",
+				"type": "address"
+			}
+		],
+		"name": "CauseOwnershipTransferStarted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "previousOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "CauseOwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "recipient",
+				"type": "address"
+			}
+		],
+		"name": "CauseRecipientSet",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "recipient",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethBurned",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "etherAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "ClaimedEther",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "recipient",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "ClaimedReth",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "principalAdded",
+				"type": "uint256"
+			}
+		],
+		"name": "Deposited",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"components": [
+					{ "internalType": "uint256", "name": "causeId", "type": "uint256" },
+					{ "internalType": "uint256", "name": "bps", "type": "uint256" }
+				],
+				"indexed": false,
+				"internalType": "struct Firstfruits.Allocation[]",
+				"name": "allocations",
+				"type": "tuple[]"
+			}
+		],
+		"name": "Designated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "Harvested",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "pendingOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipHandoverCanceled",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "pendingOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipHandoverRequested",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "oldOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "SurplusSwept",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "etherAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethBurned",
+				"type": "uint256"
+			}
+		],
+		"name": "Withdrawn",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "principalReduced",
+				"type": "uint256"
+			}
+		],
+		"name": "WithdrawnReth",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "causeId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "YieldAllocated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "patron",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "rethAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "YieldBanked",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "BPS_DENOMINATOR",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "MAX_ALLOCATIONS",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "WITHDRAW_ALL",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_causeId", "type": "uint256" }],
+		"name": "acceptCauseOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "_patron", "type": "address" }],
+		"name": "allocationsOf",
+		"outputs": [
+			{
+				"components": [
+					{ "internalType": "uint256", "name": "causeId", "type": "uint256" },
+					{ "internalType": "uint256", "name": "bps", "type": "uint256" }
+				],
+				"internalType": "struct Firstfruits.Allocation[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "cancelOwnershipHandover",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_causeId", "type": "uint256" }],
+		"name": "causes",
+		"outputs": [
+			{ "internalType": "address", "name": "owner", "type": "address" },
+			{ "internalType": "address", "name": "pendingOwner", "type": "address" },
+			{ "internalType": "address", "name": "recipient", "type": "address" },
+			{ "internalType": "bool", "name": "active", "type": "bool" },
+			{ "internalType": "string", "name": "name", "type": "string" },
+			{ "internalType": "uint256", "name": "claimableReth", "type": "uint256" },
+			{
+				"internalType": "uint256",
+				"name": "totalHarvestedReth",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_causeId", "type": "uint256" }],
+		"name": "claimEther",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_causeId", "type": "uint256" }],
+		"name": "claimReth",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "pendingOwner", "type": "address" }],
+		"name": "completeOwnershipHandover",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{ "internalType": "address", "name": "_causeOwner", "type": "address" },
+			{ "internalType": "address", "name": "_recipient", "type": "address" },
+			{ "internalType": "string", "name": "_name", "type": "string" }
+		],
+		"name": "createCause",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "deposit",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"components": [
+					{ "internalType": "uint256", "name": "causeId", "type": "uint256" },
+					{ "internalType": "uint256", "name": "bps", "type": "uint256" }
+				],
+				"internalType": "struct Firstfruits.Allocation[]",
+				"name": "_splits",
+				"type": "tuple[]"
+			}
+		],
+		"name": "depositAndDesignate",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_rethAmount", "type": "uint256" }],
+		"name": "depositReth",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{ "internalType": "uint256", "name": "_rethAmount", "type": "uint256" },
+			{
+				"components": [
+					{ "internalType": "uint256", "name": "causeId", "type": "uint256" },
+					{ "internalType": "uint256", "name": "bps", "type": "uint256" }
+				],
+				"internalType": "struct Firstfruits.Allocation[]",
+				"name": "_splits",
+				"type": "tuple[]"
+			}
+		],
+		"name": "depositRethAndDesignate",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"components": [
+					{ "internalType": "uint256", "name": "causeId", "type": "uint256" },
+					{ "internalType": "uint256", "name": "bps", "type": "uint256" }
+				],
+				"internalType": "struct Firstfruits.Allocation[]",
+				"name": "_splits",
+				"type": "tuple[]"
+			}
+		],
+		"name": "designate",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "_patron", "type": "address" }],
+		"name": "harvest",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address[]",
+				"name": "_patronList",
+				"type": "address[]"
+			}
+		],
+		"name": "harvestMany",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "nextCauseId",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [{ "internalType": "address", "name": "result", "type": "address" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "pendingOwner", "type": "address" }],
+		"name": "ownershipHandoverExpiresAt",
+		"outputs": [{ "internalType": "uint256", "name": "result", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "_patron", "type": "address" }],
+		"name": "patrons",
+		"outputs": [
+			{ "internalType": "uint256", "name": "rethBalance", "type": "uint256" },
+			{
+				"internalType": "uint256",
+				"name": "principalEther",
+				"type": "uint256"
+			},
+			{ "internalType": "uint256", "name": "bankedReth", "type": "uint256" }
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "_patron", "type": "address" }],
+		"name": "pendingYield",
+		"outputs": [
+			{ "internalType": "uint256", "name": "", "type": "uint256" },
+			{ "internalType": "uint256", "name": "", "type": "uint256" }
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "rETH",
+		"outputs": [
+			{
+				"internalType": "contract IRocketTokenRETH",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "requestOwnershipHandover",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "rocketDepositPool",
+		"outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "rocketStorage",
+		"outputs": [
+			{
+				"internalType": "contract IRocketStorage",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{ "internalType": "uint256", "name": "_causeId", "type": "uint256" },
+			{ "internalType": "bool", "name": "_active", "type": "bool" }
+		],
+		"name": "setCauseActive",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{ "internalType": "uint256", "name": "_causeId", "type": "uint256" },
+			{ "internalType": "address", "name": "_recipient", "type": "address" }
+		],
+		"name": "setCauseRecipient",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "surplusReth",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_causeId", "type": "uint256" }],
+		"name": "sweepSurplus",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalBankedReth",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalClaimableReth",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalPatronReth",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalPrincipalEther",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{ "internalType": "uint256", "name": "_causeId", "type": "uint256" },
+			{ "internalType": "address", "name": "_newOwner", "type": "address" }
+		],
+		"name": "transferCauseOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_etherAmount", "type": "uint256" }],
+		"name": "withdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_rethAmount", "type": "uint256" }],
+		"name": "withdrawBank",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_rethAmount", "type": "uint256" }],
+		"name": "withdrawBankReth",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "_rethAmount", "type": "uint256" }],
+		"name": "withdrawReth",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "address", "name": "_patron", "type": "address" }],
+		"name": "withdrawableEther",
+		"outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{ "stateMutability": "payable", "type": "receive" }
+]

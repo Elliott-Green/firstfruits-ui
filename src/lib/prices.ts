@@ -15,6 +15,11 @@ export async function fetchUsdPrices(): Promise<UsdPrices> {
 	return { ethUsd: json.coins?.[ETH_COIN_ID]?.price };
 }
 
+/** ETH-equivalent wei of an rETH amount at a given (live, on-chain) redemption rate. */
+export function convertRethToEth(rethWei: bigint, exchangeRateWei: bigint): bigint {
+	return (rethWei * exchangeRateWei) / 10n ** 18n;
+}
+
 /**
  * USD value of an rETH amount, converted through its actual redemption rate
  * rather than a separately-quoted rETH market price. Deliberately doesn't
@@ -24,8 +29,7 @@ export async function fetchUsdPrices(): Promise<UsdPrices> {
  * the correct conversion, not rETH-wei-quantity × some rETH-denominated price.
  */
 export function convertRethToUsd(rethWei: bigint, exchangeRateWei: bigint, ethUsdPrice: number): number {
-	const ethEquivalentWei = (rethWei * exchangeRateWei) / 10n ** 18n;
-	return Number(formatEther(ethEquivalentWei)) * ethUsdPrice;
+	return Number(formatEther(convertRethToEth(rethWei, exchangeRateWei))) * ethUsdPrice;
 }
 
 export function formatUsd(amount: number): string {

@@ -33,11 +33,7 @@
 </script>
 
 {#if account.address}
-	<button
-		type="button"
-		class="justify-text btn flex items-center gap-2 bg-black text-center text-sm text-white dark:bg-white dark:text-black"
-		onclick={openAccountView}
-	>
+	<button type="button" class="btn flex items-center gap-2 preset-tonal text-center text-sm btn-lg" onclick={openAccountView}>
 		{#if balanceWei !== undefined}
 			<span class="text-sm opacity-70">{Number(formatEther(balanceWei)).toFixed(5)} ETH</span>
 		{:else}

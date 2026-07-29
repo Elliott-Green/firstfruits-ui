@@ -155,7 +155,12 @@
 				{/if}
 			</p>
 			{#if tvlChangePercent !== undefined}
-				<span class="text-xs font-medium" class:text-green-600={tvlChangePercent >= 0} class:text-red-500={tvlChangePercent < 0}>
+				<span
+					class="text-xs font-medium"
+					class:text-green-600={tvlChangePercent >= 0}
+					class:dark:text-green-400={tvlChangePercent >= 0}
+					class:text-red-500={tvlChangePercent < 0}
+				>
 					{tvlChangePercent >= 0 ? '+' : ''}{tvlChangePercent.toFixed(2)}% ({TVL_DAYS}D)
 				</span>
 			{/if}

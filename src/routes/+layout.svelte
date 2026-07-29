@@ -4,10 +4,10 @@
 
 	import logo from '$lib/assets/logo.png';
 
-	import favicon from '$lib/assets/favicon.svg';
 	import { AppBar } from '@skeletonlabs/skeleton-svelte';
 	import Lightswitch from '$lib/components/Lightswitch.svelte';
 	import WalletButton from '$lib/components/WalletButton.svelte';
+	import ClaimableCausesBanner from '$lib/components/ClaimableCausesBanner.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 
 	import { page } from '$app/state';
@@ -17,13 +17,13 @@
 	const navLinks = [
 		{ href: '/dashboard', label: 'Dashboard' },
 		{ href: '/causes', label: 'Causes' },
-		{ href: '/patrons', label: 'Patrons' },
+		{ href: '/patrons', label: 'Patrons' }
 	];
 
 	let mobileMenuOpen = $state(false);
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head><link rel="icon" href={logo} /></svelte:head>
 
 <AppBar>
 	<AppBar.Toolbar class="grid-cols-[auto_1fr_auto] px-4 sm:px-6 lg:px-14">
@@ -55,7 +55,7 @@
 		<AppBar.Trail>
 			<div class="flex items-center gap-2">
 				{#if !account.isConnected}
-					<button type="button" class="btn preset-filled text-sm" onclick={openConnectModal}>
+					<button type="button" class="btn preset-tonal text-sm" onclick={openConnectModal}>
 						<span class="hidden sm:inline">Connect Wallet</span>
 						<span class="sm:hidden">Connect</span>
 					</button>
@@ -65,7 +65,7 @@
 				<Lightswitch />
 				<button
 					type="button"
-					class="btn-icon preset-tonal md:hidden"
+					class="btn-icon preset-tonal btn-lg md:hidden"
 					aria-label="Toggle menu"
 					aria-expanded={mobileMenuOpen}
 					onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
@@ -112,6 +112,8 @@
 		{/each}
 	</nav>
 {/if}
+
+<ClaimableCausesBanner />
 
 <main class="w-full">
 	{@render children()}

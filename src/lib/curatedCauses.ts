@@ -5,7 +5,7 @@
  * just a maintained list of cause IDs, looked up by ID wherever we display
  * a cause (marquee, causes list, etc.).
  */
-const CURATED_CAUSE_IDS = new Set<number>([1, 2]);
+const CURATED_CAUSE_IDS = new Set<number>([1, 2, 3]);
 
 export function isCauseCurated(causeId: number | bigint | string): boolean {
 	return CURATED_CAUSE_IDS.has(Number(causeId));

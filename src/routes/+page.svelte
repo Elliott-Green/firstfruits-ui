@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { openConnectModal } from '$lib/wallet.svelte';
 	import { formatEther } from 'ethers';
+	import { MetaTags, deepMerge } from 'svelte-meta-tags';
 	import HomeHero from '$lib/components/HomeHero.svelte';
 	import { fetchRecentActivity, fetchLatestCauses, type ActivityItem } from '$lib/subgraph';
 	import { FIRSTFRUITS_ADDRESS, RETH_ADDRESS } from '$lib/contracts/firstfruits';
+
+	let { data } = $props();
+	// No titleTemplate suffix here — the base title is already the full
+	// site tagline, so appending "· Firstfruits" would double up.
+	const metaTags = $derived(deepMerge(data.baseMetaTags, { titleTemplate: '' }));
 
 	const steps: { icon: string; title: string; body: string; iconScale?: string }[] = [
 		{
@@ -14,14 +20,12 @@
 		{
 			icon: `<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.5-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7Z"/>`,
 			title: 'Earn',
-			body: 'ETH is staked which returns rETH to the vault.',
-
+			body: 'ETH is staked which returns rETH to the vault.'
 		},
 		{
 			icon: `<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>`,
 			title: 'Yield',
-			body: 'rETH appreciates over time, generating staking yield.',
-
+			body: 'rETH appreciates over time, generating staking yield.'
 		},
 		{
 			icon: `<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>`,
@@ -124,6 +128,8 @@
 		loadActivity();
 	});
 </script>
+
+<MetaTags {...metaTags} />
 
 <!-- Hero -->
 <HomeHero />
@@ -315,8 +321,6 @@
 			<p class="text-xl font-bold">Start giving what grows.</p>
 			<p class="opacity-60">Stake ETH. Earn yield. Change the world.</p>
 		</div>
-		<button type="button" class="btn w-full justify-center preset-filled-primary-500 sm:w-auto" onclick={openConnectModal}>
-			Connect Wallet →
-		</button>
+		<button type="button" class="btn w-full justify-center preset-tonal sm:w-auto" onclick={openConnectModal}> Connect Wallet → </button>
 	</div>
 </section>

@@ -1,0 +1,8 @@
+{
+	"mainnet": {
+		"Firstfruits": {
+			"address": "0xff0000000674ffb069f73038b0a54c7937552088",
+			"startBlock": 25606349
+		}
+	}
+}

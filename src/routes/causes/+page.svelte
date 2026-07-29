@@ -1,13 +1,37 @@
 <script lang="ts">
-	import { Contract, formatEther } from 'ethers';
+	import { Contract, formatEther, isAddress } from 'ethers';
+	import { Dialog, Portal, usePagination } from '@skeletonlabs/skeleton-svelte';
+	import { MetaTags, deepMerge } from 'svelte-meta-tags';
+	import { page } from '$app/state';
 	import { getActiveProvider } from '$lib/contracts/provider';
+	import { getVaultWithSigner } from '$lib/contracts/signer';
+	import { account } from '$lib/wallet.svelte';
 	import { FIRSTFRUITS_ADDRESS, firstfruitsAbi } from '$lib/contracts/firstfruits';
 	import { fetchRethExchangeRate } from '$lib/contracts/reth';
 	import { fetchLatestCauses, fetchCauseSupporterCounts } from '$lib/subgraph';
 	import { fetchUsdPrices, convertRethToUsd, formatUsd, type UsdPrices } from '$lib/prices';
 	import { readCache, writeCache, cacheWrittenAt } from '$lib/localCache';
 	import { isCauseCurated } from '$lib/curatedCauses';
+	import { getContractErrorMessage } from '$lib/errors';
 	import AddressLink from '$lib/components/AddressLink.svelte';
+	import TablePagination from '$lib/components/TablePagination.svelte';
+	import { ogImageUrl } from '$lib/og';
+
+	const PAGE_SIZE = 25;
+
+	const PAGE_TITLE = 'Causes';
+	const PAGE_DESCRIPTION = 'Browse every cause on Firstfruits and see how much staking yield each has received.';
+
+	let { data } = $props();
+	const metaTags = $derived.by(() => {
+		const image = ogImageUrl(page.url.origin, PAGE_TITLE, PAGE_DESCRIPTION);
+		return deepMerge(data.baseMetaTags, {
+			title: PAGE_TITLE,
+			description: PAGE_DESCRIPTION,
+			openGraph: { title: PAGE_TITLE, images: [{ url: image, width: 1200, height: 630, alt: PAGE_TITLE }] },
+			twitter: { title: PAGE_TITLE, image }
+		});
+	});
 
 	type CauseRow = {
 		id: string;
@@ -44,6 +68,68 @@
 	// keep showing the truncated address instead of flashing a "loading" state.
 	let ensNames = $state<Map<string, string | null>>(new Map());
 
+	// Owner-only actions: setCauseActive/setCauseRecipient. Only meaningful for
+	// causes the connected wallet actually owns — checked per-row below.
+	let togglingCauseId = $state<string | undefined>(undefined);
+	let editingCauseId = $state<string | undefined>(undefined);
+	let editRecipientValue = $state('');
+	let savingRecipient = $state(false);
+	let errorModalMessage = $state<string | undefined>(undefined);
+
+	function isOwner(cause: CauseRow): boolean {
+		return !!account.address && cause.owner.toLowerCase() === account.address.toLowerCase();
+	}
+
+	const ownedCauses = $derived(causes.filter((c) => isOwner(c)));
+
+	async function toggleActive(cause: CauseRow) {
+		togglingCauseId = cause.id;
+		try {
+			const vault = await getVaultWithSigner();
+			const tx = await vault.setCauseActive(cause.id, !cause.active);
+			await tx.wait();
+			const updated = causes.map((c) => (c.id === cause.id ? { ...c, active: !c.active } : c));
+			causes = updated;
+			writeCache(CACHE_KEY, updated);
+		} catch (e) {
+			errorModalMessage = getContractErrorMessage(e, 'Failed to update cause status.');
+		} finally {
+			togglingCauseId = undefined;
+		}
+	}
+
+	function startEditRecipient(cause: CauseRow) {
+		editingCauseId = cause.id;
+		editRecipientValue = cause.recipient;
+	}
+
+	function cancelEditRecipient() {
+		editingCauseId = undefined;
+		editRecipientValue = '';
+	}
+
+	async function saveRecipient(cause: CauseRow) {
+		const value = editRecipientValue.trim();
+		if (!isAddress(value)) {
+			errorModalMessage = 'Enter a valid recipient address.';
+			return;
+		}
+		savingRecipient = true;
+		try {
+			const vault = await getVaultWithSigner();
+			const tx = await vault.setCauseRecipient(cause.id, value);
+			await tx.wait();
+			const updated = causes.map((c) => (c.id === cause.id ? { ...c, recipient: value } : c));
+			causes = updated;
+			writeCache(CACHE_KEY, updated);
+			editingCauseId = undefined;
+		} catch (e) {
+			errorModalMessage = getContractErrorMessage(e, 'Failed to update recipient.');
+		} finally {
+			savingRecipient = false;
+		}
+	}
+
 	async function resolveEnsNames(addresses: string[]) {
 		const provider = getActiveProvider();
 		const unique = [...new Set(addresses.map((a) => a.toLowerCase()))];
@@ -64,6 +150,7 @@
 			// Numbers/status/dates read better desc by default; name reads better asc.
 			sortDir = key === 'name' ? 'asc' : 'desc';
 		}
+		causesPagination().setPage(1);
 	}
 
 	function cmpBigint(a: bigint, b: bigint): number {
@@ -91,6 +178,13 @@
 			}
 		});
 	});
+
+	const causesPagination = usePagination(() => ({
+		id: 'causes-pagination',
+		count: sortedCauses.length,
+		defaultPageSize: PAGE_SIZE
+	}));
+	const pagedCauses = $derived(causesPagination().slice(sortedCauses));
 
 	function formatReth(wei: bigint): string {
 		return Number(formatEther(wei)).toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -127,6 +221,7 @@
 			if (cached) {
 				causes = cached;
 				cachedAt = cacheWrittenAt(CACHE_KEY);
+				causesPagination().setPage(1);
 				loadPrices();
 				return;
 			}
@@ -166,6 +261,7 @@
 			causes = rows;
 			writeCache(CACHE_KEY, rows);
 			cachedAt = Date.now();
+			causesPagination().setPage(1);
 			loadPrices();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load causes.';
@@ -192,19 +288,94 @@
 	});
 </script>
 
+<MetaTags {...metaTags} />
+
 <div class="px-4 py-8 lg:px-18">
 	<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
-		<h1 class="text-3xl font-bold">Causes</h1>
+		<div>
+			<h1 class="text-3xl font-bold">Causes</h1>
+			<p class="mt-1 text-sm opacity-60">Browse every cause and see how much yield each has received.</p>
+		</div>
 		<div class="flex items-center gap-3">
 			{#if cachedAt}
 				<span class="text-xs opacity-60">Updated {relativeTime(cachedAt / 1000)}</span>
 			{/if}
-			<button type="button" class="btn btn-sm preset-tonal" onclick={() => loadCauses(true)} disabled={loading}>
+			<button type="button" class="btn preset-tonal btn-sm" onclick={() => loadCauses(true)} disabled={loading}>
 				{loading ? 'Refreshing…' : 'Refresh'}
 			</button>
-			<a href="/causes/create" class="btn preset-filled-primary-500">Create a cause</a>
+			<a href="/causes/create" class="btn preset-tonal">Create a cause</a>
 		</div>
 	</div>
+
+	{#if ownedCauses.length > 0}
+		<div class="mb-6">
+			<h2 class="text-lg font-semibold">Manage Your Causes</h2>
+			<p class="mt-0.5 text-sm opacity-60">
+				You own {ownedCauses.length} cause{ownedCauses.length === 1 ? '' : 's'} — update its status or recipient below.
+			</p>
+			<div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{#each ownedCauses as cause (cause.id)}
+					<div class="card border border-surface-200-800 bg-surface-50-950 p-5">
+						<div class="flex items-center justify-between gap-2">
+							<div class="flex min-w-0 items-center gap-1.5 font-medium">
+								{#if cause.curated}
+									<span class="shrink-0 text-amber-500" title="Curated cause">⭐</span>
+								{/if}
+								<span class="truncate">{cause.name}</span>
+							</div>
+							<button
+								type="button"
+								class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium hover:opacity-80 disabled:opacity-50 {cause.active
+									? 'bg-green-500/10 text-green-600 dark:text-green-400'
+									: 'bg-surface-200-800 opacity-60'}"
+								disabled={togglingCauseId === cause.id}
+								onclick={() => toggleActive(cause)}
+								title="Click to {cause.active ? 'deactivate' : 'activate'} this cause"
+							>
+								{togglingCauseId === cause.id ? '…' : cause.active ? 'Active' : 'Inactive'}
+							</button>
+						</div>
+
+						<p class="mt-3 text-xs opacity-60">Recipient</p>
+						{#if editingCauseId === cause.id}
+							<div class="mt-1.5 flex items-center gap-1.5">
+								<input
+									type="text"
+									bind:value={editRecipientValue}
+									placeholder="0x…"
+									disabled={savingRecipient}
+									class="input flex-1 text-xs"
+								/>
+								<button
+									type="button"
+									class="btn-icon preset-tonal btn-sm"
+									title="Save"
+									disabled={savingRecipient}
+									onclick={() => saveRecipient(cause)}
+								>
+									{savingRecipient ? '…' : '✓'}
+								</button>
+								<button
+									type="button"
+									class="btn-icon preset-tonal btn-sm"
+									title="Cancel"
+									disabled={savingRecipient}
+									onclick={cancelEditRecipient}
+								>
+									✕
+								</button>
+							</div>
+						{:else}
+							<div class="mt-1.5 flex items-center justify-between gap-2">
+								<AddressLink address={cause.recipient} ensName={ensNames.get(cause.recipient.toLowerCase())} />
+								<button type="button" class="btn preset-tonal btn-sm" onclick={() => startEditRecipient(cause)}>Edit</button>
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	{#if !FIRSTFRUITS_ADDRESS}
 		<div class="card p-10 text-center opacity-75">
@@ -266,7 +437,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each sortedCauses as cause (cause.id)}
+					{#each pagedCauses as cause (cause.id)}
 						{@const usdRaised = rethUsd(cause.totalHarvestedReth)}
 						{@const usdClaimable = rethUsd(cause.claimableReth)}
 						<tr class="border-b border-surface-200-800 last:border-0 hover:bg-surface-100-900/50">
@@ -313,6 +484,7 @@
 				</tbody>
 			</table>
 		</div>
+		<TablePagination pagination={causesPagination} />
 	{/if}
 
 	<p class="mt-4 text-xs opacity-50">
@@ -320,3 +492,23 @@
 		{CACHE_TTL_MS / 60000} minutes — use Refresh for the latest.
 	</p>
 </div>
+
+<Dialog
+	open={errorModalMessage !== undefined}
+	onOpenChange={(d: { open: boolean }) => {
+		if (!d.open) errorModalMessage = undefined;
+	}}
+>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 z-40 bg-black/50" />
+		<Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center p-4">
+			<Dialog.Content class="w-full max-w-md card border border-surface-200-800 bg-surface-50-950 p-6">
+				<Dialog.Title class="text-lg font-semibold text-red-500">Something went wrong</Dialog.Title>
+				<Dialog.Description class="mt-2 text-sm opacity-70">{errorModalMessage}</Dialog.Description>
+				<div class="mt-6 flex justify-end">
+					<Dialog.CloseTrigger class="btn preset-tonal">Close</Dialog.CloseTrigger>
+				</div>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>

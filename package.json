@@ -43,6 +43,8 @@
 		"@reown/appkit": "1.7.9",
 		"@reown/appkit-adapter-ethers": "1.7.9",
 		"@splinetool/viewer": "^1.12.98",
-		"ethers": "6.17.0"
+		"@vercel/og": "^0.11.1",
+		"ethers": "6.17.0",
+		"svelte-meta-tags": "^5.0.2"
 	}
 }

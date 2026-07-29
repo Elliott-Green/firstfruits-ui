@@ -1,0 +1,83 @@
+specVersion: 1.3.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Firstfruits
+    network: mainnet
+    source:
+      address: '0xff0000000674ffb069f73038b0a54c7937552088'
+      abi: Firstfruits
+      startBlock: 25606349
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - BankWithdrawn
+        - BankWithdrawnReth
+        - CauseActiveSet
+        - CauseCreated
+        - CauseOwnershipTransferStarted
+        - CauseOwnershipTransferred
+        - CauseRecipientSet
+        - ClaimedEther
+        - ClaimedReth
+        - Deposited
+        - Designated
+        - Harvested
+        - OwnershipHandoverCanceled
+        - OwnershipHandoverRequested
+        - OwnershipTransferred
+        - SurplusSwept
+        - Withdrawn
+        - WithdrawnReth
+        - YieldAllocated
+        - YieldBanked
+      abis:
+        - name: Firstfruits
+          file: ./abis/Firstfruits.json
+      eventHandlers:
+        - event: BankWithdrawn(indexed address,uint256,uint256)
+          handler: handleBankWithdrawn
+        - event: BankWithdrawnReth(indexed address,uint256)
+          handler: handleBankWithdrawnReth
+        - event: CauseActiveSet(indexed uint256,bool)
+          handler: handleCauseActiveSet
+        - event: CauseCreated(indexed uint256,indexed address,indexed address,string)
+          handler: handleCauseCreated
+        - event: CauseOwnershipTransferStarted(indexed uint256,indexed address,indexed address)
+          handler: handleCauseOwnershipTransferStarted
+        - event: CauseOwnershipTransferred(indexed uint256,indexed address,indexed address)
+          handler: handleCauseOwnershipTransferred
+        - event: CauseRecipientSet(indexed uint256,indexed address)
+          handler: handleCauseRecipientSet
+        - event: ClaimedEther(indexed uint256,indexed address,uint256,uint256)
+          handler: handleClaimedEther
+        - event: ClaimedReth(indexed uint256,indexed address,uint256)
+          handler: handleClaimedReth
+        - event: Deposited(indexed address,uint256,uint256)
+          handler: handleDeposited
+        - event: Designated(indexed address,(uint256,uint256)[])
+          handler: handleDesignated
+        - event: Harvested(indexed address,uint256)
+          handler: handleHarvested
+        - event: OwnershipHandoverCanceled(indexed address)
+          handler: handleOwnershipHandoverCanceled
+        - event: OwnershipHandoverRequested(indexed address)
+          handler: handleOwnershipHandoverRequested
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: SurplusSwept(indexed uint256,uint256)
+          handler: handleSurplusSwept
+        - event: Withdrawn(indexed address,uint256,uint256)
+          handler: handleWithdrawn
+        - event: WithdrawnReth(indexed address,uint256,uint256)
+          handler: handleWithdrawnReth
+        - event: YieldAllocated(indexed address,indexed uint256,uint256)
+          handler: handleYieldAllocated
+        - event: YieldBanked(indexed address,uint256)
+          handler: handleYieldBanked
+      file: ./src/firstfruits.ts

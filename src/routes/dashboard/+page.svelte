@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Contract, formatEther, parseEther } from 'ethers';
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
+	import { MetaTags, deepMerge } from 'svelte-meta-tags';
+	import { page } from '$app/state';
 	import { getActiveProvider } from '$lib/contracts/provider';
 	import { account, openConnectModal } from '$lib/wallet.svelte';
 	import { FIRSTFRUITS_ADDRESS, RETH_ADDRESS, firstfruitsAbi, BPS_DENOMINATOR } from '$lib/contracts/firstfruits';
@@ -11,6 +13,21 @@
 	import { fetchUsdPrices, convertRethToUsd, formatUsd, type UsdPrices } from '$lib/prices';
 	import { fetchRethExchangeRate } from '$lib/contracts/reth';
 	import { getContractErrorMessage } from '$lib/errors';
+	import { ogImageUrl } from '$lib/og';
+
+	const PAGE_TITLE = 'Dashboard';
+	const PAGE_DESCRIPTION = 'Deposit ETH or rETH, choose your cause splits, and harvest yield — manage your Firstfruits vault position.';
+
+	let { data } = $props();
+	const metaTags = $derived.by(() => {
+		const image = ogImageUrl(page.url.origin, PAGE_TITLE, PAGE_DESCRIPTION);
+		return deepMerge(data.baseMetaTags, {
+			title: PAGE_TITLE,
+			description: PAGE_DESCRIPTION,
+			openGraph: { title: PAGE_TITLE, images: [{ url: image, width: 1200, height: 630, alt: PAGE_TITLE }] },
+			twitter: { title: PAGE_TITLE, image }
+		});
+	});
 
 	type Position = {
 		rethBalance: bigint;
@@ -127,12 +144,8 @@
 	let wizardDismissed = $state(false);
 	const showWizard = $derived(!wizardHarvestDone && !wizardDismissed);
 	const wizardSplitsStatus = $derived<WizardStatus>(wizardSplitsDone ? 'done' : 'active');
-	const wizardDepositStatus = $derived<WizardStatus>(
-		wizardDepositDone ? 'done' : wizardSplitsDone ? 'active' : 'upcoming'
-	);
-	const wizardHarvestStatus = $derived<WizardStatus>(
-		wizardHarvestDone ? 'done' : wizardDepositDone ? 'active' : 'upcoming'
-	);
+	const wizardDepositStatus = $derived<WizardStatus>(wizardDepositDone ? 'done' : wizardSplitsDone ? 'active' : 'upcoming');
+	const wizardHarvestStatus = $derived<WizardStatus>(wizardHarvestDone ? 'done' : wizardDepositDone ? 'active' : 'upcoming');
 
 	function wizardDismissKey(address: string): string {
 		return `firstfruits:wizard-dismissed:${address.toLowerCase()}`;
@@ -482,6 +495,8 @@
 	});
 </script>
 
+<MetaTags {...metaTags} />
+
 <div class="px-4 py-8 lg:px-18">
 	<h1 class="text-3xl font-bold">Your Vault</h1>
 	<p class="mt-1 text-sm opacity-60">Grow your impact. Earn yield. Support causes.</p>
@@ -489,7 +504,7 @@
 	{#if !account.isConnected}
 		<div class="mt-6 flex flex-col items-center gap-4 card p-10 text-center">
 			<p class="opacity-75">Connect your wallet to view your position and deposit.</p>
-			<button type="button" class="btn preset-filled-primary-500" onclick={openConnectModal}> Connect wallet </button>
+			<button type="button" class="btn preset-tonal" onclick={openConnectModal}> Connect wallet </button>
 		</div>
 	{:else if !FIRSTFRUITS_ADDRESS}
 		<div class="mt-6 card p-10 text-center opacity-75">
@@ -545,7 +560,7 @@
 			>
 				<span class="relative flex h-11 w-11 shrink-0 items-center justify-center">
 					{#if status === 'active'}
-						<span class="absolute inset-0 rounded-full bg-primary-500 opacity-75 animate-ping"></span>
+						<span class="absolute inset-0 animate-ping rounded-full bg-primary-500 opacity-75"></span>
 						<span class="absolute -inset-1.5 rounded-full ring-4 ring-primary-500/25"></span>
 					{/if}
 					<span
@@ -601,7 +616,17 @@
 						onclick={dismissWizard}
 					>
 						Hide
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
 							<path d="m18 15-6-6-6 6" />
 						</svg>
 					</button>
@@ -614,18 +639,50 @@
 				     margin equal-thirds centering left on each side. Circle 2 stays
 				     centered in the middle column, which lands it at exactly 50%. -->
 				<div class="relative mt-6 hidden sm:block">
-					<div class="absolute top-[22px] left-[22px] h-1 rounded-full w-[calc(50%-22px)]" class:bg-green-500={wizardSplitsDone} class:bg-surface-200-800={!wizardSplitsDone}></div>
-					<div class="absolute top-[22px] left-1/2 h-1 rounded-full w-[calc(50%-22px)]" class:bg-green-500={wizardDepositDone} class:bg-surface-200-800={!wizardDepositDone}></div>
+					<div
+						class="absolute top-[22px] left-[22px] h-1 w-[calc(50%-22px)] rounded-full"
+						class:bg-green-500={wizardSplitsDone}
+						class:bg-surface-200-800={!wizardSplitsDone}
+					></div>
+					<div
+						class="absolute top-[22px] left-1/2 h-1 w-[calc(50%-22px)] rounded-full"
+						class:bg-green-500={wizardDepositDone}
+						class:bg-surface-200-800={!wizardDepositDone}
+					></div>
 					<div class="flex">
 						{@render wizardStep(1, 'Choose cause splits', 'Add causes below until they add up to 100%.', wizardSplitsStatus, 'start')}
-						{@render wizardStep(2, 'Deposit ETH or rETH', 'Stake into the vault — this saves your splits too.', wizardDepositStatus, 'center')}
-						{@render wizardStep(3, 'Harvest when ready', 'Once yield has accrued, harvest to send it to your causes.', wizardHarvestStatus, 'end')}
+						{@render wizardStep(
+							2,
+							'Deposit ETH or rETH',
+							'Stake into the vault — this saves your splits too.',
+							wizardDepositStatus,
+							'center'
+						)}
+						{@render wizardStep(
+							3,
+							'Harvest when ready',
+							'Once yield has accrued, harvest to send it to your causes.',
+							wizardHarvestStatus,
+							'end'
+						)}
 					</div>
 				</div>
 				<div class="mt-6 flex flex-col gap-6 sm:hidden">
 					{@render wizardStep(1, 'Choose cause splits', 'Add causes below until they add up to 100%.', wizardSplitsStatus, 'center')}
-					{@render wizardStep(2, 'Deposit ETH or rETH', 'Stake into the vault — this saves your splits too.', wizardDepositStatus, 'center')}
-					{@render wizardStep(3, 'Harvest when ready', 'Once yield has accrued, harvest to send it to your causes.', wizardHarvestStatus, 'center')}
+					{@render wizardStep(
+						2,
+						'Deposit ETH or rETH',
+						'Stake into the vault — this saves your splits too.',
+						wizardDepositStatus,
+						'center'
+					)}
+					{@render wizardStep(
+						3,
+						'Harvest when ready',
+						'Once yield has accrued, harvest to send it to your causes.',
+						wizardHarvestStatus,
+						'center'
+					)}
 				</div>
 			</div>
 		{/if}
@@ -634,7 +691,7 @@
 			<div class="flex flex-col card bg-surface-100-900 p-6">
 				<p class="text-sm opacity-60">Withdrawable principal</p>
 				<div class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-					<p class="text-4xl font-semibold tracking-tight whitespace-nowrap text-blue-600 dark:text-blue-400">
+					<p class="text-3xl font-semibold tracking-tight whitespace-nowrap text-blue-600 dark:text-blue-400">
 						{position ? formatAmount(position.principalEther) : loading ? '…' : '0'} ETH
 					</p>
 					{#if position && ethUsd(position.principalEther)}
@@ -646,7 +703,7 @@
 			<div class="flex flex-col card bg-surface-100-900 p-6">
 				<p class="text-sm opacity-60">rETH held</p>
 				<div class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-					<p class="text-4xl font-semibold tracking-tight whitespace-nowrap text-orange-600 dark:text-orange-400">
+					<p class="text-3xl font-semibold tracking-tight whitespace-nowrap text-orange-600 dark:text-orange-400">
 						{position ? formatAmount(position.rethBalance) : loading ? '…' : '0'} rETH
 					</p>
 					{#if position && rethUsd(position.rethBalance)}
@@ -658,7 +715,7 @@
 			<div class="flex flex-col card bg-surface-100-900 p-6">
 				<p class="text-sm opacity-60">Pending yield (unharvested)</p>
 				<div class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-					<p class="text-4xl font-semibold tracking-tight whitespace-nowrap text-green-600 dark:text-green-400">
+					<p class="text-3xl font-semibold tracking-tight whitespace-nowrap text-green-600 dark:text-green-400">
 						{pendingYieldReth !== undefined ? formatAmount(pendingYieldReth) : loading ? '…' : '0'} rETH
 					</p>
 					{#if pendingYieldReth !== undefined && rethUsd(pendingYieldReth)}
@@ -666,15 +723,15 @@
 					{/if}
 				</div>
 				<div class="flex place-content-between">
-					<p class="mt-auto pt-2 text-xs" class:text-green-600={harvestSuccess} class:opacity-50={!harvestSuccess}>
+					<p
+						class="mt-auto pt-2 text-xs"
+						class:text-green-600={harvestSuccess}
+						class:dark:text-green-400={harvestSuccess}
+						class:opacity-50={!harvestSuccess}
+					>
 						{harvestSuccess ? 'Harvested — yield routed to your causes.' : 'Routes straight to your causes on harvest.'}
 					</p>
-					<button
-						type="button"
-						class="btn bg-black text-white btn-sm dark:bg-white dark:text-black"
-						disabled={harvesting || !pendingYieldReth}
-						onclick={harvest}
-					>
+					<button type="button" class="btn preset-tonal btn-sm" disabled={harvesting || !pendingYieldReth} onclick={harvest}>
 						{harvesting ? 'Harvesting…' : 'Harvest'}
 					</button>
 				</div>
@@ -682,7 +739,7 @@
 			<div class="flex flex-col card bg-surface-100-900 p-6">
 				<p class="text-sm opacity-60">Total donated</p>
 				<div class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-					<p class="text-4xl font-semibold tracking-tight whitespace-nowrap text-green-600 dark:text-green-400">
+					<p class="text-3xl font-semibold tracking-tight whitespace-nowrap text-green-600 dark:text-green-400">
 						{totalDonatedReth !== undefined ? formatAmount(totalDonatedReth) : loading ? '…' : '0'} rETH
 					</p>
 					{#if totalDonatedReth !== undefined && rethUsd(totalDonatedReth)}
@@ -774,7 +831,7 @@
 								title={maxForThis < bpsDenominator
 									? `Free up ${bpsDenominator - maxForThis} bps elsewhere to raise this further`
 									: undefined}
-								class="mt-2 ml-11 w-[calc(100%-2.75rem)]"
+								class="mt-2 ml-11 w-[calc(100%-2.75rem)] accent-[var(--color-surface-950-50)]"
 							/>
 						</div>
 					{/each}
@@ -782,7 +839,11 @@
 
 				<div class="mt-4 flex items-center justify-between border-t pt-4 text-sm">
 					<span>Total</span>
-					<span class:text-red-500={totalBps !== bpsDenominator} class:text-green-600={totalBps === bpsDenominator}>
+					<span
+						class:text-red-500={totalBps !== bpsDenominator}
+						class:text-green-600={totalBps === bpsDenominator}
+						class:dark:text-green-400={totalBps === bpsDenominator}
+					>
 						{totalBps} / {bpsDenominator} bps
 						{#if totalBps !== bpsDenominator}
 							({totalBps < bpsDenominator ? bpsDenominator - totalBps : totalBps - bpsDenominator}
@@ -792,13 +853,13 @@
 				</div>
 
 				{#if saveSuccess}
-					<p class="mt-2 text-sm text-green-600">Splits saved.</p>
+					<p class="mt-2 text-sm text-green-600 dark:text-green-400">Splits saved.</p>
 				{/if}
 
 				{#if hasWithdrawableBalance}
 					<button
 						type="button"
-						class="mt-4 btn w-full justify-center preset-filled-primary-500"
+						class="mt-4 btn w-full justify-center preset-tonal"
 						disabled={saving || totalBps !== bpsDenominator}
 						onclick={saveSplits}
 					>
@@ -861,24 +922,17 @@
 				</div>
 
 				<div class="mt-3 flex gap-2">
-					<input
-						type="text"
-						inputmode="decimal"
-						placeholder="0.0"
-						bind:value={depositAmount}
-						class="input flex-1"
-						disabled={depositing}
-					/>
+					<input type="text" inputmode="decimal" placeholder="0.0" bind:value={depositAmount} class="input flex-1" disabled={depositing} />
 					<button type="button" class="btn preset-tonal" onclick={setMaxDeposit} disabled={depositing || !depositMaxReady}>Max</button>
 				</div>
 
 				{#if depositSuccess}
-					<p class="mt-2 text-sm text-green-600">Deposit confirmed.</p>
+					<p class="mt-2 text-sm text-green-600 dark:text-green-400">Deposit confirmed.</p>
 				{/if}
 
 				<button
 					type="button"
-					class="mt-4 btn w-full justify-center preset-filled-primary-500"
+					class="mt-4 btn w-full justify-center preset-tonal"
 					disabled={depositing || totalBps !== bpsDenominator}
 					onclick={deposit}
 				>
@@ -945,7 +999,7 @@
 				</div>
 
 				{#if withdrawSuccess}
-					<p class="mt-2 text-sm text-green-600">Withdrawal confirmed.</p>
+					<p class="mt-2 text-sm text-green-600 dark:text-green-400">Withdrawal confirmed.</p>
 				{/if}
 
 				<button type="button" class="mt-4 btn w-full justify-center preset-tonal" disabled={withdrawing || !canWithdraw} onclick={withdraw}>
@@ -969,7 +1023,7 @@
 				<Dialog.Title class="text-lg font-semibold text-red-500">Something went wrong</Dialog.Title>
 				<Dialog.Description class="mt-2 text-sm opacity-70">{errorModalMessage}</Dialog.Description>
 				<div class="mt-6 flex justify-end">
-					<Dialog.CloseTrigger class="btn preset-filled-primary-500">Close</Dialog.CloseTrigger>
+					<Dialog.CloseTrigger class="btn preset-tonal">Close</Dialog.CloseTrigger>
 				</div>
 			</Dialog.Content>
 		</Dialog.Positioner>

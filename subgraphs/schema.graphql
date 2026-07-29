@@ -1,0 +1,240 @@
+type BankWithdrawn @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	rethAmount: BigInt! # uint256
+	etherAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type BankWithdrawnReth @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	rethAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type CauseActiveSet @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	active: Boolean! # bool
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type CauseCreated @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	owner: Bytes! # address
+	recipient: Bytes! # address
+	name: String! # string
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type CauseOwnershipTransferStarted @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	owner: Bytes! # address
+	pendingOwner: Bytes! # address
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type CauseOwnershipTransferred @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	previousOwner: Bytes! # address
+	newOwner: Bytes! # address
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type CauseRecipientSet @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	recipient: Bytes! # address
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type ClaimedEther @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	recipient: Bytes! # address
+	rethBurned: BigInt! # uint256
+	etherAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type ClaimedReth @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	recipient: Bytes! # address
+	rethAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type Deposited @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	rethAmount: BigInt! # uint256
+	principalAdded: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type Designated @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	allocations: [Bytes!]! # tuple[]
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type Harvested @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	rethAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type OwnershipHandoverCanceled @entity(immutable: true) {
+	id: Bytes!
+	pendingOwner: Bytes! # address
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type OwnershipHandoverRequested @entity(immutable: true) {
+	id: Bytes!
+	pendingOwner: Bytes! # address
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type OwnershipTransferred @entity(immutable: true) {
+	id: Bytes!
+	oldOwner: Bytes! # address
+	newOwner: Bytes! # address
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type SurplusSwept @entity(immutable: true) {
+	id: Bytes!
+	causeId: BigInt! # uint256
+	rethAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type Withdrawn @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	etherAmount: BigInt! # uint256
+	rethBurned: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type WithdrawnReth @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	rethAmount: BigInt! # uint256
+	principalReduced: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type YieldAllocated @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	causeId: BigInt! # uint256
+	rethAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+type YieldBanked @entity(immutable: true) {
+	id: Bytes!
+	patron: Bytes! # address
+	rethAmount: BigInt! # uint256
+	blockNumber: BigInt!
+	blockTimestamp: BigInt!
+	transactionHash: Bytes!
+}
+
+"""
+Running protocol-wide totals. Singleton entity — always loaded/saved with
+id "protocol". totalPrincipalEther is read directly from the contract's own
+totalPrincipalEther() view on every update (rather than reconstructed from
+event deltas) because the Withdrawn event only reports the Ether actually
+received from burning rETH, not the exact principal reduced — those can
+differ by a rounding wei, so summing event fields would drift from the real
+on-chain value over time. totalYieldDonatedReth *is* safe to accumulate from
+YieldAllocated's rethAmount, since that field is the exact atomic amount the
+contract added to a cause's totalHarvestedReth.
+"""
+type Protocol @entity(immutable: false) {
+	id: Bytes!
+	totalPrincipalEther: BigInt!
+	totalYieldDonatedReth: BigInt!
+	causeCount: BigInt!
+	patronCount: BigInt!
+}
+
+"""
+One row per unique address that has ever deposited. The contract itself has
+no patron counter or enumeration (`patrons` is just a mapping) — this is how
+we count patrons at all: created on a patron's first Deposited event (covers
+both deposit() and depositReth(), which both emit it). `active` tracks
+whether they currently still have a position — checked against the
+contract's own patrons(address).rethBalance after every Withdrawn/
+WithdrawnReth event, since a partial withdrawal leaves them active but a
+full exit zeroes it out. Protocol.patronCount only counts active patrons,
+incremented/decremented as this flips — not a lifetime "ever participated"
+total.
+"""
+type Patron @entity(immutable: false) {
+	id: Bytes!
+	firstDepositTimestamp: BigInt!
+	active: Boolean!
+}
+
+"""
+One row per UTC day (id = day number since epoch). Upserted every time a
+relevant event fires that day, so it always reflects the Protocol totals as
+of the end of that day. Query a range of these, ordered by dayId, to chart
+TVL / yield-donated over time.
+"""
+type DailySnapshot @entity(immutable: false) {
+	id: Bytes!
+	dayId: Int!
+	dayStartTimestamp: BigInt!
+	totalPrincipalEther: BigInt!
+	totalYieldDonatedReth: BigInt!
+}
