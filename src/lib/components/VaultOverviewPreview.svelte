@@ -6,6 +6,7 @@
 	import { fetchDailySnapshots, fetchProtocolStats, type DailySnapshot } from '$lib/subgraph';
 	import { fetchUsdPrices, convertRethToUsd, formatUsd, type UsdPrices } from '$lib/prices';
 	import { fetchRethExchangeRate } from '$lib/contracts/reth';
+	import { isCausedBanned } from '$lib/bannedCauses';
 
 	const APY_DAYS = 30;
 	const TVL_DAYS = 30;
@@ -100,9 +101,9 @@
 			const vault = new Contract(FIRSTFRUITS_ADDRESS, firstfruitsAbi, getActiveProvider());
 			const [principalEther, nextCauseId] = await Promise.all([vault.totalPrincipalEther(), vault.nextCauseId()]);
 			totalValueLockedEther = principalEther;
-			causeCount = Number(nextCauseId) - 1;
 
-			const ids = Array.from({ length: causeCount }, (_, i) => BigInt(i + 1));
+			const ids = Array.from({ length: Number(nextCauseId) - 1 }, (_, i) => BigInt(i + 1)).filter((id) => !isCausedBanned(id));
+			causeCount = ids.length;
 			const causes = await Promise.all(ids.map((id) => vault.causes(id)));
 			totalYieldDonatedReth = causes.reduce((sum: bigint, c: { totalHarvestedReth: bigint }) => sum + c.totalHarvestedReth, 0n);
 		} catch (e) {

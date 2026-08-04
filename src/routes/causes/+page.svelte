@@ -16,6 +16,7 @@
 	import AddressLink from '$lib/components/AddressLink.svelte';
 	import TablePagination from '$lib/components/TablePagination.svelte';
 	import { ogImageUrl } from '$lib/og';
+	import { isCausedBanned } from '$lib/bannedCauses.js';
 
 	const PAGE_SIZE = 25;
 
@@ -235,16 +236,24 @@
 			const nextCauseId: bigint = await vault.nextCauseId();
 			const ids = Array.from({ length: Number(nextCauseId) - 1 }, (_, i) => BigInt(i + 1));
 
+			const filteredIds = ids.filter((id) => !isCausedBanned(id));
+
 			const [onChain, createdByCauseId, supportersByCauseId] = await Promise.all([
 				Promise.all(
-					ids.map(async (id) => {
+					filteredIds.map(async (id) => {
 						const [owner, , recipient, active, name, claimableReth, totalHarvestedReth] = await vault.causes(id);
-						return { id: id.toString(), owner, recipient, active, name, claimableReth, totalHarvestedReth };
+
+						return {
+							id: id.toString(),
+							owner,
+							recipient,
+							active,
+							name,
+							claimableReth,
+							totalHarvestedReth
+						};
 					})
 				),
-				// Best-effort: these come from the subgraph, not the contract. If it's
-				// not configured (or the request fails), just show "-" for these
-				// columns rather than breaking the whole page over decorative stats.
 				fetchLatestCauses(200)
 					.then((list) => new Map(list.map((c) => [c.causeId, Number(c.blockTimestamp)])))
 					.catch(() => new Map<string, number>()),

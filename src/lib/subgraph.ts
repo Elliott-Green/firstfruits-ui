@@ -1,3 +1,5 @@
+import { isCausedBanned } from "./bannedCauses";
+
 const SUBGRAPH_URL = import.meta.env.VITE_SUBGRAPH_URL as string | undefined;
 
 export type DailySnapshot = {
@@ -72,7 +74,7 @@ export async function fetchLatestCauses(limit = 25): Promise<SubgraphCause[]> {
 	const json = await res.json();
 	if (json.errors) throw new Error(json.errors[0]?.message ?? 'Subgraph query error');
 
-	return json.data.causeCreateds as SubgraphCause[];
+	return (json.data.causeCreateds as SubgraphCause[]).filter((c) => !isCausedBanned(c.causeId));
 }
 
 // Bytes.fromUTF8("protocol") from the subgraph mapping — the singleton's id.
@@ -317,5 +319,10 @@ export async function fetchRecentActivity(limit = 5): Promise<ActivityItem[]> {
 		json.data.causeCreateds.map(tag('causeCreated'))
 	);
 
-	return all.sort((a, b) => Number(b.blockTimestamp) - Number(a.blockTimestamp)).slice(0, limit);
+	return all
+		// Only yieldAllocated/causeCreated carry a causeId — deposits, harvests,
+		// and withdrawals aren't tied to a specific cause, so they always pass.
+		.filter((c) => c.causeId === undefined || !isCausedBanned(c.causeId))
+		.sort((a, b) => Number(b.blockTimestamp) - Number(a.blockTimestamp))
+		.slice(0, limit);
 }

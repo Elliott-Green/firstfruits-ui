@@ -9,6 +9,7 @@
 	import { isCauseCurated } from '$lib/curatedCauses';
 	import { getActiveProvider } from '$lib/contracts/provider';
 	import { FIRSTFRUITS_ADDRESS, firstfruitsAbi } from '$lib/contracts/firstfruits';
+	import { isCausedBanned } from '$lib/bannedCauses';
 
 	function formatAmount(wei: bigint): string {
 		return Number(formatEther(wei)).toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -45,11 +46,13 @@
 	async function loadItems() {
 		try {
 			const causes = await fetchLatestCauses(25);
-			const base = causes.map((c) => ({
-				causeId: c.causeId,
-				name: c.name,
-				curated: isCauseCurated(c.causeId)
-			}));
+			const base = causes
+				.filter((c) => !isCausedBanned(c.causeId))
+				.map((c) => ({
+					causeId: c.causeId,
+					name: c.name,
+					curated: isCauseCurated(c.causeId)
+				}));
 			items = await hydrateWithChainData(base);
 		} catch {
 			// No subgraph configured, or nothing indexed yet - just don't show
